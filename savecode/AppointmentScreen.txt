@@ -43,7 +43,8 @@ export default function AppointmentScreen() {
     setModalVisible(false);
     setStep(1);
     navigation.navigate('Home'); // or your home route name
-
+    // resetRegistrarDocuments();
+    // setSubPage(null);
   };
 
   // Form data state
@@ -142,8 +143,7 @@ export default function AppointmentScreen() {
       )}
 
       {step === 2 && formData.role === "Alumni" && (
-        <>
-          <AlumniForm 
+        <AlumniForm 
           onBack={() => setStep(1)}
           onNext={() => setStep(3)}  
           StudentNameValue={formData.studentName}
@@ -154,29 +154,23 @@ export default function AppointmentScreen() {
           setYearLevelValue={val => handleChange('studentYearLevel', val)}
           handleCancel={handleCancel}
         />
-        <CancelModal
-          modalvisible={modalVisible}
-          onBack={handleCloseModal}
-          onConfirmCancel={handleCancelAppointment}
-        />
-        </>
-        
       )}
 
       {step === 3 && (
         <>
           <OfficeTransaction
           onBack={() => setStep(2)}
-          modalvisible={modalVisible}
           handleCancel={handleCancel}
-          onClose={handleCloseModal}
-          onConfirmCancel={handleCancelAppointment}
           transactionValue={formData.transaction}
           setTransactionValue={val => handleChange('transaction', val)}
           totalCostValue={formData.totalCost}
           setTotalCostValue={val => handleChange('totalCost', val)}
         />
-
+         <CancelModal
+          modalvisible={modalVisible}
+          onBack={handleCloseModal}
+          onConfirmCancel={handleCancelAppointment}
+        />
         </>
       )}
 

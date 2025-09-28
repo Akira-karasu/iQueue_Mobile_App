@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, StyleProp, Image, ImageSourcePropType, TouchableOpacity } from 'react-native';
+import { Image, ImageSourcePropType, StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
 interface CustomRadioButtonProps {
   options: { label: string; value: string }[];
@@ -37,7 +37,8 @@ const CustomRadioButton: React.FC<CustomRadioButtonProps> = ({
               styles.optionRow,
               {
                 backgroundColor: isSelected ? '#eafff3' : '#fff',
-                padding: 4,
+                padding: 20, width: '100%', borderRadius: 10, borderWidth: isSelected ? 3 : 2, borderColor: isSelected ? radioColor : uncheckedColor,
+                justifyContent: 'space-evenly',
               },
             ]}
             activeOpacity={0.7}
@@ -57,7 +58,7 @@ const CustomRadioButton: React.FC<CustomRadioButtonProps> = ({
               style={[
                 styles.label,
                 labelStyle,
-                { color: isSelected ? radioColor : '#333', fontWeight: isSelected ? 'bold' : 'normal' },
+                { color: isSelected ? radioColor : '#ccc', fontWeight: isSelected ? 'bold' : 'normal' }
               ]}
             >
               {option.label}
@@ -71,7 +72,8 @@ const CustomRadioButton: React.FC<CustomRadioButtonProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 8
+
   },
   optionRow: {
     flexDirection: 'row',
@@ -79,7 +81,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   label: {
-    fontSize: 16,
+    fontSize: 30,
     color: '#333',
     marginLeft: 4,
   },

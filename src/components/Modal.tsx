@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, StyleSheet } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 
 type ModalsProps = {
   visible: boolean;
@@ -11,6 +11,8 @@ type ModalsProps = {
   modalStyle?: object;
   titleStyle?: object;
   messageStyle?: object;
+  height?: number | string;
+  width?: number | string;
 };
 
 const Modals: React.FC<ModalsProps> = ({
@@ -22,6 +24,8 @@ const Modals: React.FC<ModalsProps> = ({
   modalStyle,
   titleStyle,
   messageStyle,
+  height="auto",
+  width="auto",
 }) => {
 
   return (
@@ -32,7 +36,7 @@ const Modals: React.FC<ModalsProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={[styles.modal, modalStyle]}>
+        <View style={[styles.modal, modalStyle, { height, width }]}>
           {title ? <Text style={[styles.title, titleStyle]}>{title}</Text> : null}
           {message ? <Text style={[styles.message, messageStyle]}>{message}</Text> : null}
           {children}
@@ -56,7 +60,6 @@ const styles = StyleSheet.create({
     minWidth: 280,
     alignItems: 'center',
     elevation: 5,
-    height: '85%',
   },
   title: {
     fontSize: 20,

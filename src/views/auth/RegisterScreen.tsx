@@ -1,16 +1,16 @@
-import React, {useState} from 'react';
-import { View, Text, StyleSheet, Switch, ScrollView } from 'react-native';
-import { GlobalStyles } from '../../styles/style';
 import { LinearGradient } from 'expo-linear-gradient';
-import  IconBar  from '../../components/IconBar';
-import  LogoTitle  from '../../components/LogoTitle';
-import Input from "../../components/Input";
-import Button from "../../components/Button";
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Activity from '../../components/activity';
+import Button from "../../components/Button";
+import IconBar from '../../components/IconBar';
+import Input from "../../components/Input";
+import LogoTitle from '../../components/LogoTitle';
 import PasswordPolicy from '../../components/PasswordPolicy';
+import { GlobalStyles } from '../../styles/style';
 
-import { validateEmail, validatePassword, validateConfirmPassword } from '../../utils/validation';
 import Modals from '../../components/Modal';
+import { validateConfirmPassword, validateEmail, validatePassword } from '../../utils/validation';
 
 
 export default function RegisterScreen({ navigation }) {
@@ -101,6 +101,7 @@ export default function RegisterScreen({ navigation }) {
             <Modals
               visible={modalvisible}
               onClose={() => setModalVisible(false)}
+              height={"85%"}
               title="Terms and Conditions"
               message="IQUEUE: Smart Queue Management with Mobile Application for Pastorelle – Jesus Good Shepherd School"
             >

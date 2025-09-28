@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { createContext } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Button from '../Button';
 import Card from '../Card';
@@ -10,6 +10,7 @@ import CustomSelect from '../select';
 import ToggleOfficeButton from '../ToggleOfficeButton';
 import ViewScroller from '../ViewScroller';
 
+const RegistrarContext = createContext();
 
 const documents = [
   {
@@ -414,7 +415,6 @@ export function OfficeTransaction({
     onBack, handleCancel,
     transactionValue, setTransactionValue,
     totalCostValue, setTotalCostValue,
-    onClose, modalvisible, onConfirmCancel
 }){
 
     const [subPage, setSubPage] = React.useState<string | null>(null);
@@ -485,28 +485,28 @@ export function OfficeTransaction({
         });
     }
 
-    const resetTransaction = () => {
-            const resetDocs = registrarDocuments.map(doc => ({
-                ...doc,
-                Quantity: 0,
-                Purpose: "",
-            }));
-            setRegistrarDocuments(resetDocs);
+    
+  
+    const resetRegistrarDocuments = () => {
+        const resetDocs = registrarDocuments.map(doc => ({
+            ...doc,
+            Quantity: 0,
+            Purpose: "",
+        }));
+        setRegistrarDocuments(resetDocs);
 
-            // setTransactionRegistrar(prev => ({
-            //     ...prev,
-            //     requestedDocument: [],
-            //     total: 0,
-            // }));
-            // setTransactionValue({
-            //     ...registrarOffice,
-            //     requestedDocument: [],
-            //     total: 0,
-            // });
-            
-
-        };
-
+        // Also reset registrarOffice and transactionValue if needed
+        // setTransactionRegistrar(prev => ({
+        //     ...prev,
+        //     requestedDocument: [],
+        //     total: 0,
+        // }));
+        // setTransactionValue({
+        //     ...registrarOffice,
+        //     requestedDocument: [],
+        //     total: 0,
+        // });
+    };
 
 
     const [accountingOffice, setTransactionAccounting] = React.useState(
@@ -558,7 +558,6 @@ export function OfficeTransaction({
                         color='#393939'
                         backgroundColor="#CBCACA"
                     />
-
                     <Button title="Submit"  disabled={
                         !Array.isArray(transactionValue.requestedDocument) ||
                         transactionValue.requestedDocument.length === 0
@@ -662,26 +661,8 @@ export function OfficeTransaction({
             </Card>
             </>
         )}
-
-        <Modals
-            visible={modalvisible}
-            width={"85%"}
-            title="Cancel Appointment"
-            message="Are you sure you want to cancel your appointment?"
-        >
-            <View  style={styles.buttonsContainer}>
-                <Button title="No" fontSize={20}  backgroundColor='#FF0000' width={"40%"} onPress={onClose} />
-                <Button title="Yes" fontSize={20} backgroundColor='#14AD59' width={"40%"} onPress={() => {resetTransaction ();}} />
-            </View>
-        </Modals>
-
-
         </View>
-
-        
-
     );
-    
 }
 
 

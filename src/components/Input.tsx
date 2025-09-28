@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TextInput, Text, View, TouchableOpacity, Image } from "react-native";
+import { Image, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type InputProps = {
   label?: string;
@@ -11,6 +11,7 @@ type InputProps = {
   className?: string;
   required?: boolean;
   showPasswordToggle?: boolean;
+  editable: boolean
 };
 
 const Input: React.FC<InputProps> = ({
@@ -22,6 +23,7 @@ const Input: React.FC<InputProps> = ({
   keyboardType = "default",
   required = false,
   showPasswordToggle = false,
+  editable = true,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(!secureTextEntry);
@@ -29,12 +31,11 @@ const Input: React.FC<InputProps> = ({
   const isPasswordField = secureTextEntry && showPasswordToggle;
 
   return (
-    <View style={{ width: '100%', marginBottom: 16 }}>
+    <View style={{ width: '100%', marginBottom: 10 }}>
       {label && (
         <Text
           style={{
             marginBottom: 4,
-            fontWeight: '500',
             color: isFocused ? '#16a34a' : '#374151',
           }}
         >
@@ -50,11 +51,16 @@ const Input: React.FC<InputProps> = ({
             paddingVertical: 12,
             borderRadius: 12,
             borderWidth: 1,
-            borderColor: isFocused ? '#22c55e' : '#d1d5db',
-            color: '#1f2937',
-            backgroundColor: '#fff',
-            paddingRight: isPasswordField ? 40 : 16, // extra space for icon
+            borderColor: !editable
+              ? '#e5e7eb' // light gray border when disabled
+              : isFocused
+              ? '#22c55e'
+              : '#d1d5db',
+            color: !editable ? '#a3a3a3' : '#1f2937', // gray text when disabled
+            backgroundColor: !editable ? '#f3f4f6' : '#fff', // light gray bg when disabled
+            paddingRight: isPasswordField ? 40 : 16,
           }}
+          editable={editable}
           placeholder={placeholder}
           value={value ?? ""}
           onChangeText={onChangeText ?? (() => {})}

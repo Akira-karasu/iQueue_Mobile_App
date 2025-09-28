@@ -1,6 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import type { ViewStyle, TextStyle, StyleProp } from 'react-native';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 interface ButtonProps {
   title: string;
@@ -11,6 +11,8 @@ interface ButtonProps {
   disabled?: boolean;
   color?: string;
   backgroundColor?: string; // Add this prop
+  height?: number | string;
+  width?: number | string;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -22,12 +24,14 @@ const Button: React.FC<ButtonProps> = ({
   disabled = false,
   color = 'white',
   backgroundColor = '#FFCE00', // Default background color
+  height="auto",
+  width="auto",
 }) => {
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        { backgroundColor },
+        { backgroundColor, height, width  },
         style,
 
         disabled && styles.disabled,
@@ -36,7 +40,7 @@ const Button: React.FC<ButtonProps> = ({
       activeOpacity={0.7}
       disabled={disabled}
     >
-      <Text style={[styles.text, textStyle, { fontSize, color }]}>{title}</Text>
+      <Text style={[styles.text, textStyle, { fontSize, color}]}>{title}</Text>
     </TouchableOpacity>
   );
 };
@@ -54,7 +58,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   disabled: {
-    backgroundColor: '#A5D6A7',
+    backgroundColor: '#ffe787ff',
   },
 });
 

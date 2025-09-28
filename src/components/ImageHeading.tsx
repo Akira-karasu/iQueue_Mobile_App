@@ -1,4 +1,4 @@
-import { View, Image, StyleSheet, Dimensions } from 'react-native';
+import { Dimensions, Image, StyleSheet, View } from 'react-native';
 import Activity from './activity';
 
 const { width } = Dimensions.get('window');
@@ -39,8 +39,8 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     logo: {
-        width: 70,
-        height: 70,
+        width: 50,
+        height: 50,
         marginBottom: 4,
     },
     schoolImageWrapper: {

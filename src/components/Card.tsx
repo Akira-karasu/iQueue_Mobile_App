@@ -1,5 +1,5 @@
-    import React from 'react';
-    import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
+import React from 'react';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
     interface CardProps {
     children: React.ReactNode;
@@ -18,7 +18,7 @@
     borderRadius = 8,
     elevation = 3,
     padding = 16,
-    shadowColor = '#000',
+    shadowColor = '#CCCCCC',
     }) => {
     return (
         <View
