@@ -11,51 +11,6 @@ import ToggleOfficeButton from '../ToggleOfficeButton';
 import ViewScroller from '../ViewScroller';
 
 
-const documents = [
-  {
-    DocumentName: "Certificate of Candidacy for Completion",
-    Price: 150.00,
-    Purpose: "",
-    Quantity: 0,
-  },
-  {
-    DocumentName: "Certificate of Enrollment",
-    Price: 150.00,
-    Purpose: "",
-    Quantity: 0,
-  },
-  {
-    DocumentName: "Copy of Diploma (For Graduates Only)",
-    Price: 500.00,
-    Purpose: "",
-    Quantity: 0,
-  },
-  {
-    DocumentName: "Form 137 / School Form 10",
-    Price: 300.00,
-    Purpose: "",
-    Quantity: 0,
-  },
-  {
-    DocumentName: "Good Moral Certificate",
-    Price: 150.00,
-    Purpose: "",
-    Quantity: 0,
-  },
-  {
-    DocumentName: "ESC Certificate",
-    Price: 150.00,
-    Purpose: "",
-    Quantity: 0,
-  },
-  {
-    DocumentName: "Certification Authentication Verification",
-    Price: 700.00,
-    Purpose: "",
-    Quantity: 0,
-  },
-];
-
 
 
     const roles = [
@@ -414,20 +369,13 @@ export function OfficeTransaction({
     onBack, handleCancel,
     transactionValue, setTransactionValue,
     totalCostValue, setTotalCostValue,
-    onClose, modalvisible, onConfirmCancel
+    registrarDocuments, setRegistrarDocuments,
+    registrarOffice, setTransactionRegistrar
 }){
 
     const [subPage, setSubPage] = React.useState<string | null>(null);
-    const [registrarDocuments, setRegistrarDocuments] = React.useState(documents);
 
-    const [registrarOffice, setTransactionRegistrar] = React.useState(
-        {
-            Office: "Registrar Office",
-            Transction: "Document Request",
-            requestedDocument: [],
-            total: 0
-        }
-    );
+
 
     const addDocu = (idx) => {
         const newDocs = [...registrarDocuments];
@@ -485,38 +433,10 @@ export function OfficeTransaction({
         });
     }
 
-    const resetTransaction = () => {
-            const resetDocs = registrarDocuments.map(doc => ({
-                ...doc,
-                Quantity: 0,
-                Purpose: "",
-            }));
-            setRegistrarDocuments(resetDocs);
+    
+  
+    
 
-            // setTransactionRegistrar(prev => ({
-            //     ...prev,
-            //     requestedDocument: [],
-            //     total: 0,
-            // }));
-            // setTransactionValue({
-            //     ...registrarOffice,
-            //     requestedDocument: [],
-            //     total: 0,
-            // });
-            
-
-        };
-
-
-
-    const [accountingOffice, setTransactionAccounting] = React.useState(
-        {
-            Office: "Accounting Office",
-            Transction: "Document Request",
-            requestedDocument: [],
-            total: 0
-        }
-    );
 
 
     return (
@@ -558,11 +478,19 @@ export function OfficeTransaction({
                         color='#393939'
                         backgroundColor="#CBCACA"
                     />
-
                     <Button title="Submit"  disabled={
                         !Array.isArray(transactionValue.requestedDocument) ||
                         transactionValue.requestedDocument.length === 0
                     }fontSize={15}/>
+                </View>
+            </Card>
+
+            <Card style={{ padding: 15 }}>
+                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{color: '#A3A3A3', fontWeight: '500'}}>Transaction Cost</Text>
+                    <Text style={{color: '#ef4444', fontWeight: '700'}}>
+                        ₱ {transactionValue.total ? transactionValue.total.toFixed(2) : '0.00'}
+                    </Text>
                 </View>
             </Card>
             </>
@@ -662,26 +590,8 @@ export function OfficeTransaction({
             </Card>
             </>
         )}
-
-        <Modals
-            visible={modalvisible}
-            width={"85%"}
-            title="Cancel Appointment"
-            message="Are you sure you want to cancel your appointment?"
-        >
-            <View  style={styles.buttonsContainer}>
-                <Button title="No" fontSize={20}  backgroundColor='#FF0000' width={"40%"} onPress={onClose} />
-                <Button title="Yes" fontSize={20} backgroundColor='#14AD59' width={"40%"} onPress={() => {resetTransaction ();}} />
-            </View>
-        </Modals>
-
-
         </View>
-
-        
-
     );
-    
 }
 
 
