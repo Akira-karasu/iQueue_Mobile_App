@@ -1,12 +1,13 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { GlobalStyles } from '../../styles/style';
 import { LinearGradient } from 'expo-linear-gradient';
-import  IconBar  from '../../components/IconBar';
-import  LogoTitle  from '../../components/LogoTitle';
-import Input from "../../components/Input";
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from "../../components/Button";
+import IconBar from '../../components/IconBar';
+import Input from "../../components/Input";
+import LogoTitle from '../../components/LogoTitle';
 import Activity from '../../components/activity';
+import { GlobalStyles } from '../../styles/style';
 
 // import { validateAuth } from '../../utils/validation';
 
@@ -17,6 +18,7 @@ export default function ForgotPassScreen({ navigation }){
     // make a function for checking email if existing
 
     return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#C3F9E0" }} edges={['top']}>
         <LinearGradient
               colors={['#C3F9E0', '#FFF']}
               style={GlobalStyles.container}
@@ -51,6 +53,7 @@ export default function ForgotPassScreen({ navigation }){
                 </View>
               </View>
             </LinearGradient>
+        </SafeAreaView>
     );
 }
 

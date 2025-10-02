@@ -33,7 +33,7 @@ const ToggleOfficeButton: React.FC<ToggleOfficeButtonProps> = ({ label, active, 
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 8,
+    borderRadius: 5,
     marginVertical: 6,
     paddingHorizontal: 12,
     paddingVertical: 12,

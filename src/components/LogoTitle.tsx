@@ -1,5 +1,4 @@
-import { StyleSheet } from "react-native";
-import { View, Text, Image } from 'react-native';
+import { Image, StyleSheet, Text, View } from "react-native";
 
 type LogoTitleProps = {
   title?: string;

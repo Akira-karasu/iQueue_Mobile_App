@@ -1,5 +1,4 @@
-import { StyleSheet } from "react-native";
-import { View, Text, Image } from 'react-native';
+import { Image, StyleSheet, Text, View } from "react-native";
 
 export default function IconBar() {
     return (
@@ -15,7 +14,6 @@ export default function IconBar() {
 
 const styles = StyleSheet.create({
     container: {
-        paddingTop: 20,
         paddingBottom: 20,
         flexDirection: "row",
         justifyContent: "flex-start",

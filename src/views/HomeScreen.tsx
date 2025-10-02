@@ -1,16 +1,18 @@
 import React from 'react';
 import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import ImageHeading from '../components/ImageHeading';
 import UserBoarder from '../components/UserBoarder';
 import ViewScroller from '../components/ViewScroller';
-import ImageHeading from '../components/ImageHeading';
-import EventAndAnnounce from '../components/functionalComponents/EventAndAnnounce';
 import CurrentTransaction from '../components/functionalComponents/CurrenTransaction';
+import EventAndAnnounce from '../components/functionalComponents/EventAndAnnounce';
 import HistoryTransaction from '../components/functionalComponents/HistoryTransaction';
 
 export default function HomeScreen() {
 
   return (
-     <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#19AF5B" }} edges={['top']}>
+     <View style={{ flex: 1, backgroundColor: "#F9F9F9" }}>
       <UserBoarder />
       <ViewScroller
         horizontal={false}
@@ -23,6 +25,7 @@ export default function HomeScreen() {
         
       </ViewScroller>
     </View>
+    </SafeAreaView>
   );
 }
 

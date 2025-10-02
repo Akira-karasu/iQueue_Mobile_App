@@ -15,7 +15,7 @@ import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
     children,
     style = {},
     backgroundColor = '#fff',
-    borderRadius = 8,
+    borderRadius = 5,
     elevation = 3,
     padding = 16,
     shadowColor = '#CCCCCC',

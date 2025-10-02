@@ -49,7 +49,7 @@ const Input: React.FC<InputProps> = ({
             width: '100%',
             paddingHorizontal: 16,
             paddingVertical: 12,
-            borderRadius: 12,
+            borderRadius: 5,
             borderWidth: 1,
             borderColor: !editable
               ? '#e5e7eb' // light gray border when disabled
@@ -69,6 +69,7 @@ const Input: React.FC<InputProps> = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />
+
         {isPasswordField && (
           <TouchableOpacity
             onPress={() => setShowPassword((prev) => !prev)}

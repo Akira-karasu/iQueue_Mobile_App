@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     schoolImageWrapper: {
         width: width * 0.92,
         aspectRatio: 1.7,
-        borderRadius: 18,
+        borderRadius: 5,
         overflow: 'hidden',
         backgroundColor: '#eee',
         marginTop: 8,

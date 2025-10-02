@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     borderWidth: 1,
     borderColor: '#d1d5db',
-    borderRadius: 12,
+    borderRadius: 5,
     overflow: 'hidden',
     backgroundColor: '#fff',
     height: 40,
