@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
-import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import { Button, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlumniForm, CancelModal, ChooseRole, OfficeTransaction, StudentForm, VisitorForm } from '../components/forms/AppointmentForm';
 import UserBoarder from '../components/UserBoarder';
@@ -82,6 +82,10 @@ export default function AppointmentScreen() {
 
   const navigation = useNavigation();
 
+  const [accountingPayment, setAccountingPayment] = React.useState(payment);
+
+  const [registrarDocuments, setRegistrarDocuments] = React.useState(documents);
+
 
   // Form input state
   const [VisitorNameValue, setVisitorNameValue] = React.useState('');
@@ -90,16 +94,11 @@ export default function AppointmentScreen() {
   const [StudentYearLevel, setYearLevelValue] = React.useState('');
   const [StudentGradeLevel, setGradeLevelValue] = React.useState('');
   const [StudentSection, setSectionValue] = React.useState('');
-  const [Transaction, setTransactionValue] = React.useState([]);
+  const [Transaction, setTransactionValue] = React.useState({});
 
-
-   const [accountingPayment, setAccountingPayment] = React.useState(payment);
-
-  const [registrarDocuments, setRegistrarDocuments] = React.useState(documents);
   
   const [registrarOffice, setTransactionRegistrar] = React.useState(
     {
-        Office: "Registrar Office",
         Transction: "Document Request",
         requestedDocument: [],
         total: 0
@@ -108,7 +107,6 @@ export default function AppointmentScreen() {
 
   const [accountingOffice, setTransactionAccounting] = React.useState(
     {
-        Office: "Accounting Office",
         Transction: "Payment",
         requestedPayment: [],
         total: 0
@@ -164,8 +162,7 @@ export default function AppointmentScreen() {
     studentYearLevel: "",
     studentGradeLevel: "",
     studentSection: "",
-    transaction: [],
-    totalCost: 0,
+    transaction: {},
     });
     setModalVisible(false);
     setStep(1);
@@ -183,14 +180,14 @@ export default function AppointmentScreen() {
     studentYearLevel: "",
     studentGradeLevel: "",
     studentSection: "",
-    transaction: [],
+    transaction: {},
   });
 
   const handleChange = (field, value) => {
     setFormData(prev => {
       if (field === 'role' && prev.role !== value) {
         // Reset other fields if role changes
-        return { role: value, visitorName: "", studentName: "", studentLrnNumber: "", studentYearLevel: "", studentGradeLevel: "", studentSection: "", transaction: [], totalCost: 0 };
+        return { role: value, visitorName: "", studentName: "", studentLrnNumber: "", studentYearLevel: "", studentGradeLevel: "", studentSection: "", transaction: {} };
       }
       return { ...prev, [field]: value };
     });
@@ -203,25 +200,26 @@ export default function AppointmentScreen() {
       console.log(`${key}:`, value);
     });
 
-    console.log(registrarOffice);
+    console.log('\n');
 
     Object.entries(registrarOffice).forEach(([key, value]) => {
       if (key === 'requestedDocument' && Array.isArray(value)) {
         console.log(`${key}:`);
         value.forEach((doc, index) => {
-          console.log(`  Document ${index + 1}:`, doc);
+          console.log(`  Reuqest Document ${index + 1}:`, doc);
         });
       } else {
         console.log(`${key}:`, value);
       }
     });
 
+    console.log('\n');
 
     Object.entries(accountingOffice).forEach(([key, value]) => {
       if (key === 'requestedPayment' && Array.isArray(value)) {
         console.log(`${key}:`);
         value.forEach((pay, index) => {
-          console.log(`  Payment ${index + 1}:`, pay);
+          console.log(`  Request Payment ${index + 1}:`, pay);
         });
       } else {
         console.log(`${key}:`, value);
@@ -364,8 +362,9 @@ export default function AppointmentScreen() {
         {/* steps in transaction process */}
 
         
+        
 
-        {/* <Button title="Debug" onPress={Debug}  /> */}
+        <Button title="Debug" onPress={Debug}  />
       </ViewScroller>
       </KeyboardAvoidingView>
     </View>

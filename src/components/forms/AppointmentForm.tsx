@@ -474,7 +474,9 @@ const handleSubmitTransaction = () => {
     transactionObj.accountingOffice = accountingOffice;
   }
 
-  transactionObj.total = totalCost;
+  transactionObj.totalCost = totalCost;
+  transactionObj.transactionDate = new Date().toISOString();
+  transactionObj.transactionSteps = 1;
 
   // set this into form data as object
   setTransactionValue(transactionObj);
@@ -504,7 +506,7 @@ const handleSubmitTransaction = () => {
                     <ToggleOfficeButton
                         label="Registrar Office"
                         active={
-                            registrarOffice.Office === "Registrar Office" && Array.isArray(registrarOffice.requestedDocument) &&
+                            Array.isArray(registrarOffice.requestedDocument) &&
                             registrarOffice.requestedDocument.some(doc => doc.Quantity > 0)
                         }
                         onPress={() => setSubPage("Registrar Office")}
@@ -512,7 +514,7 @@ const handleSubmitTransaction = () => {
                     <ToggleOfficeButton
                         label="Accounting Office"
                         active={
-                            accountingOffice.Office === "Accounting Office" && Array.isArray(accountingOffice.requestedPayment) &&
+                            Array.isArray(accountingOffice.requestedPayment) &&
                             accountingOffice.requestedPayment.length > 0
                         }
                         onPress={() => setSubPage("Accounting Office")}
