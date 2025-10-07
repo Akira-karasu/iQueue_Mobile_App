@@ -1,8 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
-import { Button, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AlumniForm, CancelModal, ChooseRole, OfficeTransaction, StudentForm, VisitorForm } from '../components/forms/AppointmentForm';
+import { AlumniForm, CancelModal, ChooseRole, ConfirmSubmitModal, OfficeTransaction, StudentForm, VisitorForm } from '../components/forms/AppointmentForm';
 import UserBoarder from '../components/UserBoarder';
 import ViewScroller from '../components/ViewScroller';
 
@@ -113,10 +113,15 @@ export default function AppointmentScreen() {
     }
 );
 
-  const [modalVisible, setModalVisible] = React.useState(false);
+  const [cancelmodalVisible, setcancelModalVisible] = React.useState(false);
+  const [confirmmodalVisible, confirmsetModalVisible] = React.useState(false);
 
-  const handleCancel = () => setModalVisible(true);
-  const handleCloseModal = () => setModalVisible(false);
+
+  const handleCancel = () => setcancelModalVisible(true);
+  const handleSubmit = () => confirmsetModalVisible(true);
+
+  const handleCloseCancelModal = () => setcancelModalVisible(false);
+  const handleCloseConfirmModal = () => confirmsetModalVisible(false);
 
 
    const resetTransaction = () => {
@@ -164,11 +169,10 @@ export default function AppointmentScreen() {
     studentSection: "",
     transaction: {},
     });
-    setModalVisible(false);
+    setcancelModalVisible(false);
     setStep(1);
     navigation.navigate('Home');
     resetTransaction();
-
   };
 
   // Form data state
@@ -182,6 +186,9 @@ export default function AppointmentScreen() {
     studentSection: "",
     transaction: {},
   });
+
+  // this should be from the backend transaction steps
+  const [transactionSteps, setTransactionSteps] = React.useState(0);
 
   const handleChange = (field, value) => {
     setFormData(prev => {
@@ -226,8 +233,38 @@ export default function AppointmentScreen() {
       }
     });
 
-
   }
+
+  const handleSubmitTransaction = () => {
+    const transactionObj = {};
+    const regTotal = (registrarOffice?.total) || 0;
+    const accTotal = (accountingOffice?.total) || 0;
+    const totalCost = regTotal + accTotal;
+
+    if (Array.isArray(registrarOffice?.requestedDocument) && registrarOffice.requestedDocument.length) {
+      transactionObj.registrarOffice = registrarOffice;
+    }
+
+    if (Array.isArray(accountingOffice?.requestedPayment) && accountingOffice.requestedPayment.length) {
+      transactionObj.accountingOffice = accountingOffice;
+    }
+
+    transactionObj.totalCost = totalCost;
+    transactionObj.transactionDate = new Date().toISOString();
+    transactionObj.transactionSteps = 1;
+
+    // set this into form data as object
+    setTransactionValue(transactionObj);
+    setFormData(prev => ({
+      ...prev,
+      transaction: transactionObj
+    }));
+
+    console.log('Submitted transaction:', transactionObj);
+    confirmsetModalVisible(false);
+    setStep(0); // Move to step 4 after submission
+    setTransactionSteps(1);
+};
 
 
 
@@ -272,8 +309,8 @@ export default function AppointmentScreen() {
             handleCancel={handleCancel}
           />
           <CancelModal
-            modalvisible={modalVisible}
-            onBack={handleCloseModal}
+            modalvisible={cancelmodalVisible}
+            onBack={handleCloseCancelModal}
             onConfirmCancel={handleCancelAppointment}
           />
           </>
@@ -300,8 +337,8 @@ export default function AppointmentScreen() {
             handleCancel={handleCancel}
           />
           <CancelModal
-            modalvisible={modalVisible}
-            onBack={handleCloseModal}
+            modalvisible={cancelmodalVisible}
+            onBack={handleCloseCancelModal}
             onConfirmCancel={handleCancelAppointment}
           />
           </>
@@ -321,8 +358,8 @@ export default function AppointmentScreen() {
             handleCancel={handleCancel}
           />
           <CancelModal
-            modalvisible={modalVisible}
-            onBack={handleCloseModal}
+            modalvisible={cancelmodalVisible}
+            onBack={handleCloseCancelModal}
             onConfirmCancel={handleCancelAppointment}
           />
           </>
@@ -336,6 +373,7 @@ export default function AppointmentScreen() {
             <OfficeTransaction
               onBack={() => setStep(2)}
               handleCancel={handleCancel}
+              handleSubmit={handleSubmit}
               transactionValue={formData.transaction}
               setTransactionValue={val => handleChange('transaction', val)}
 
@@ -351,20 +389,59 @@ export default function AppointmentScreen() {
               setTransactionAccounting = {setTransactionAccounting}
             />
           <CancelModal
-            modalvisible={modalVisible}
-            onBack={handleCloseModal}
+            modalvisible={cancelmodalVisible}
+            onBack={handleCloseCancelModal}
             onConfirmCancel={handleCancelAppointment}
           />
+
+          <ConfirmSubmitModal
+            modalvisible={confirmmodalVisible}
+            onBack={handleCloseConfirmModal}
+            onSubmitTransaction={handleSubmitTransaction}
+          />
+
+
+
           </>
         )}
 
 
         {/* steps in transaction process */}
 
-        
-        
 
-        <Button title="Debug" onPress={Debug}  />
+        {
+          transactionSteps === 1 
+          && formData.transaction.hasOwnProperty('registrarOffice') 
+          && formData.transaction.hasOwnProperty('accountingOffice') && (
+            <View>
+              <Text>Registrar and Accounting only</Text>
+            </View>
+          )
+        }
+
+        {
+          transactionSteps === 1 
+          && formData.transaction.hasOwnProperty('registrarOffice') 
+          && !formData.transaction.hasOwnProperty('accountingOffice') && (
+            <View>
+              <Text>Registrar only</Text>
+            </View>
+          )
+        }
+
+        {
+          transactionSteps === 1 
+          && formData.transaction.hasOwnProperty('accountingOffice') 
+          && !formData.transaction.hasOwnProperty('registrarOffice') && (
+            <View>
+              <Text>Accounting only</Text>
+            </View>
+          )
+        }
+
+
+
+        {/* <Button title="Debug" onPress={Debug}  /> */}
       </ViewScroller>
       </KeyboardAvoidingView>
     </View>
