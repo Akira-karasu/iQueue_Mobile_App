@@ -1,4 +1,4 @@
-const documents = [
+export const documents = [
   {
     DocumentName: "Certificate of Candidacy for Completion",
     Price: 150.00,
@@ -43,7 +43,7 @@ const documents = [
   },
 ];
 
-const payment = [
+export const payment = [
   {
     PaymentFees: 'School books',
     Price: 300.00
@@ -62,13 +62,13 @@ const payment = [
   }
 ];
 
-const roles = [
-    { label: 'Student', value: 'Student', image: require('../../../assets/icons/Book.png') },
-    { label: 'Visitor', value: 'Visitor', image: require('../../../assets/icons/User.png') },
-    { label: 'Alumni', value: 'Alumni', image: require('../../../assets/icons/alumni.png') },
+export const roles = [
+    { label: 'Student', value: 'Student', image: require('../../assets/icons/Book.png') },
+    { label: 'Visitor', value: 'Visitor', image: require('../../assets/icons/User.png') },
+    { label: 'Alumni', value: 'Alumni', image: require('../../assets/icons/alumni.png') },
 ];
 
-const  yearLevels = [
+export const  yearLevels = [
         { label: '2025', value: '2025' },
         { label: '2024', value: '2024' },
         { label: '2023', value: '2023' },
@@ -77,7 +77,7 @@ const  yearLevels = [
         { label: '2020', value: '2020' },
     ];
 
-const grades = [
+export const grades = [
         { label: 'Grade 1', value: 'Grade 1' },
         { label: 'Grade 2', value: 'Grade 2' },
         { label: 'Grade 3', value: 'Grade 3' },
@@ -92,7 +92,7 @@ const grades = [
         { label: 'Grade 12', value: 'Grade 12' },
     ];
 
-const  section =  [
+export const  section =  [
         { label: 'Section 1', value: 'Section 1' },
         { label: 'Section 2', value: 'Section 2' },
         { label: 'Section 3', value: 'Section 3' },

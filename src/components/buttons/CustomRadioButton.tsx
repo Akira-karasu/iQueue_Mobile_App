@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, ImageSourcePropType, StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
-interface CustomRadioButtonProps {
+interface roleRadioButtonProps {
   options: { label: string; value: string }[];
   value: string;
   onValueChange: (value: string) => void;
@@ -14,7 +14,7 @@ interface CustomRadioButtonProps {
   imageStyle?: object;
 }
 
-const CustomRadioButton: React.FC<CustomRadioButtonProps> = ({
+const roleRadioButton: React.FC<roleRadioButtonProps> = ({
   options, 
   value,
   onValueChange,
@@ -87,4 +87,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CustomRadioButton;
+export default roleRadioButton;

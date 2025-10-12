@@ -1,15 +1,48 @@
 import Button from '@/src/components/buttons/Button';
+import CustomRadioButton from '@/src/components/buttons/CustomRadioButton';
+import StepBar from '@/src/components/layout/stepBar';
+import { useRequest } from '@/src/hooks/appTabHooks/useRequest';
 import React from 'react';
+import { View } from 'react-native';
 
 export type ChooseRoleProps = {
     setSteps: React.Dispatch<React.SetStateAction<number>>
+    open: () => void
+    step: number
+    selectedRole: string
+    handleChange: (key: string, value: any) => void
 };
 
 
-export default function ChooseRole({ setSteps }: ChooseRoleProps) {
+
+
+export default function ChooseRole({ setSteps, open, step, selectedRole, handleChange }: ChooseRoleProps) {
+
+    const {
+        Datarole, setRole
+    } = useRequest();
+
+
     return (
         <>
-            <Button title="Cancel" backgroundColor="#AEAEAE" color='#191919ff' fontSize={15} onPress={() => setSteps(0)}/>
+            <StepBar start={step} end={3} title="Choose your role" display={false}/>
+
+            {Datarole.map(role => (
+                <View key={role.value} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                    <CustomRadioButton
+                        options={[role]}
+                        value={selectedRole}
+                        onValueChange={val => handleChange('role', val)}
+                        direction="row"
+                        radioColor="#1EBA60"
+                        uncheckedColor="#ccc"
+                        imageSource={role.image}
+                        imageStyle={{ width: 70, height: 70, marginRight: 8 }}
+                    />
+                </View>
+            ))}
+
+            <Button title="Cancel" backgroundColor="#AEAEAE" color='#191919ff' fontSize={15} onPress={() => open()}/>
             <Button title="Next" fontSize={15} onPress={() => setSteps(2)}/>
         </>
     )
