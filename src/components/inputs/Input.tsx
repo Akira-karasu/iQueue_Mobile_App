@@ -11,7 +11,8 @@ type InputProps = {
   className?: string;
   required?: boolean;
   showPasswordToggle?: boolean;
-  editable: boolean
+  editable?: boolean;
+  maxLength?: number; // ✅ New prop for character limit
 };
 
 const Input: React.FC<InputProps> = ({
@@ -24,6 +25,7 @@ const Input: React.FC<InputProps> = ({
   required = false,
   showPasswordToggle = false,
   editable = true,
+  maxLength, // ✅ add it to destructuring
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(!secureTextEntry);
@@ -52,12 +54,12 @@ const Input: React.FC<InputProps> = ({
             borderRadius: 5,
             borderWidth: 1,
             borderColor: !editable
-              ? '#e5e7eb' // light gray border when disabled
+              ? '#e5e7eb'
               : isFocused
               ? '#22c55e'
               : '#d1d5db',
-            color: !editable ? '#a3a3a3' : '#1f2937', // gray text when disabled
-            backgroundColor: !editable ? '#f3f4f6' : '#fff', // light gray bg when disabled
+            color: !editable ? '#a3a3a3' : '#1f2937',
+            backgroundColor: !editable ? '#f3f4f6' : '#fff',
             paddingRight: isPasswordField ? 40 : 16,
           }}
           editable={editable}
@@ -68,18 +70,30 @@ const Input: React.FC<InputProps> = ({
           keyboardType={keyboardType}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          maxLength={maxLength} // ✅ enforce character limit
         />
 
         {isPasswordField && (
           <TouchableOpacity
             onPress={() => setShowPassword((prev) => !prev)}
-            style={{ position: 'absolute', right: 15, top: 0, height: '100%', justifyContent: 'center', alignItems: 'center' }}
+            style={{
+              position: 'absolute',
+              right: 15,
+              top: 0,
+              height: '100%',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
             accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
             activeOpacity={1}
           >
             <Image
               source={require('../../../assets/icons/eye.png')}
-              style={{ width: 20, height: 20, tintColor: showPassword ? '#22c55e' : '#878787'}}
+              style={{
+                width: 20,
+                height: 20,
+                tintColor: showPassword ? '#22c55e' : '#878787',
+              }}
             />
           </TouchableOpacity>
         )}
@@ -89,5 +103,3 @@ const Input: React.FC<InputProps> = ({
 };
 
 export default Input;
-
-

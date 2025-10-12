@@ -7,7 +7,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import IconButton from '../buttons/IconButton';
 
 
-type UserBoarderProp = BottomTabNavigationProp<AppTabsParamList, 'Home'>;
+type UserBoarderProp = BottomTabNavigationProp<AppTabsParamList, 'HomeStack'>;
 
 type NavProp = NativeStackNavigationProp<AppStackParamList, 'Tabs'>;
 
@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 10,
+        padding: 13,
         backgroundColor: '#19AF5B',
         width: '100%',
     },

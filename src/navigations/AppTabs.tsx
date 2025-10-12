@@ -4,7 +4,7 @@ import { Dimensions, Image, Text, View } from 'react-native';
 import { AppTabsParamList } from '../types/navigation';
 import HomeStack from '../views/Home/HomeStack';
 import ProfileStack from '../views/Profile/ProfileStack';
-import RequestScreen from '../views/Request/RequestScreen';
+import RequestStack from '../views/Request/RequestStack';
 
 
 const { width, height } = Dimensions.get('window');
@@ -29,7 +29,7 @@ export default function AppTabs() {
           if (route.name === "HomeStack") {
             iconSource = require('../../assets/icons/home.png');
             label = 'Home';
-          } else if (route.name === 'Request') {
+          } else if (route.name === 'RequestStack') {
             iconSource = require('../../assets/icons/request.png');
             label = 'Request';
           } else if (route.name === 'ProfileStack') {
@@ -76,7 +76,7 @@ export default function AppTabs() {
       })}
     >
       <Tab.Screen name="HomeStack" component={HomeStack} />
-      <Tab.Screen name="Request" component={RequestScreen} />
+      <Tab.Screen name="RequestStack" component={RequestStack} />
       <Tab.Screen name="ProfileStack" component={ProfileStack} />
     </Tab.Navigator>
 

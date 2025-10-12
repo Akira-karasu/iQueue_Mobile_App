@@ -24,7 +24,7 @@ export type AppStackParamList = {
 
 export type AppTabsParamList = {
   HomeStack: undefined;
-  Request: undefined;
+  RequestStack: undefined;
   ProfileStack: undefined;
   
 };
@@ -37,4 +37,8 @@ export type ProfileStackParamList = {
 
 export type HomeStackParamList = {
   Home: undefined;
+};
+
+export type RequestStackParamList = {
+  Request: undefined;
 };
