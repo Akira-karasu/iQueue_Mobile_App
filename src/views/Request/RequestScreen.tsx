@@ -7,8 +7,11 @@ import useModal from '@/src/hooks/componentHooks/useModal';
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AlumniForm from './RequestingForm/AlumniForm';
 import ChooseRole from './RequestingForm/ChooseRole';
 import StartForm from './RequestingForm/StartForm';
+import StudentForm from './RequestingForm/StudentForm';
+import VisitorForm from './RequestingForm/VisitorForm';
 
 export default function RequestScreen() {
 
@@ -19,7 +22,8 @@ export default function RequestScreen() {
         setFormData,
         handleDebug,
         handleChange,
-        setSteps
+        setSteps,
+        handleResetTransaction
     } = useRequest();
 
     const cancelModal = useModal();
@@ -53,7 +57,37 @@ export default function RequestScreen() {
           
         }
 
-        <CancelTransaction visible={cancelModal.visible} onClose={cancelModal.close} handleResetTransaction={() => {}}/>
+        {
+          steps === 2 && formData.role === "Student" && (
+            <StudentForm 
+              setSteps={setSteps} 
+              open={cancelModal.open} 
+              step={steps} 
+              studentName={formData.studentName}
+              studentLrnNumber={formData.studentLrnNumber}
+              studentYearLevel={formData.studentYearLevel}
+              studentGradeLevel={formData.studentGradeLevel}
+              studentSection={formData.studentSection}
+              setFormData={setFormData} 
+              handleChange={handleChange}/>
+          )
+        }
+
+        {
+          steps === 2 && formData.role === "Alumni" && (
+            <AlumniForm setSteps={setSteps} open={cancelModal.open} step={steps}/>
+          )
+        }
+
+        {
+          steps === 2 && formData.role === "Visitor" && (
+            <VisitorForm setSteps={setSteps} open={cancelModal.open} step={steps}/>
+          )
+        }
+
+
+
+        <CancelTransaction visible={cancelModal.visible} onClose={cancelModal.close} handleResetTransaction={() => handleResetTransaction(cancelModal.close)}/>
         <SubmitTransaction visible={submitModal.visible} onClose={submitModal.close} handleSubmitTransaction={() => {}}/>
       </View>
     </SafeAreaView>

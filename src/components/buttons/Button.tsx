@@ -23,24 +23,23 @@ const Button: React.FC<ButtonProps> = ({
   disabled = false,
   color = 'white',
   backgroundColor = '#FFCE00',
-  height="auto",
-  width="auto",
+  height = "auto",
+  width = "auto",
 }) => {
+  const computedBackground = disabled ? '#ffe787ff' : backgroundColor;
+
   return (
     <TouchableOpacity
-    style={[
+      style={[
         styles.button,
+        { backgroundColor: computedBackground, height, width },
         style,
-        disabled ? styles.disabled : undefined,
-        backgroundColor ? { backgroundColor } as ViewStyle : undefined,
-        height !== undefined ? { height } as ViewStyle : undefined,
-        width !== undefined ? { width } as ViewStyle : undefined,
       ]}
       onPress={onPress}
       activeOpacity={0.7}
       disabled={disabled}
     >
-      <Text style={[styles.text, textStyle, { fontSize, color}]}>{title}</Text>
+      <Text style={[styles.text, textStyle, { fontSize, color }]}>{title}</Text>
     </TouchableOpacity>
   );
 };
@@ -57,10 +56,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-  disabled: {
-    backgroundColor: '#ffe787ff',
-  },
 });
 
 export default Button;
-
