@@ -1,10 +1,12 @@
-import React from 'react';
-
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import AppTabs from './AppTabs';
+import { RootStackParamList } from '../types/navigation';
+
+
+import AppStack from './AppStack';
 import AuthStack from './AuthStack';
 
-const Stack = createNativeStackNavigator();
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   const user = true; // later: replace with your real auth state
@@ -12,11 +14,12 @@ export default function RootNavigator() {
   return (
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="App" component={AppTabs} />
+          <Stack.Screen name="App" component={AppStack} />
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
         )}
       </Stack.Navigator>
   );
 }
+
 

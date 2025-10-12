@@ -1,17 +1,19 @@
+
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import React from 'react';
 import { Dimensions, Image, Text, View } from 'react-native';
-import AppointmentScreen from '../views/AppointmentScreen';
-import HomeScreen from '../views/HomeScreen';
-import NotificationScreen from '../views/Notification';
-import ProfileScreen from '../views/Profile.Screen';
+import { AppTabsParamList } from '../types/navigation';
+import HomeStack from '../views/Home/HomeStack';
+import ProfileStack from '../views/Profile/ProfileStack';
+import RequestScreen from '../views/Request/RequestScreen';
+
 
 const { width, height } = Dimensions.get('window');
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<AppTabsParamList>();
 
 export default function AppTabs() {
   return (
+    <>
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -24,16 +26,13 @@ export default function AppTabs() {
         tabBarIcon: ({ focused }) => {
           let iconSource, label;
 
-          if (route.name === 'Home') {
+          if (route.name === "HomeStack") {
             iconSource = require('../../assets/icons/home.png');
             label = 'Home';
-          } else if (route.name === 'Notification') {
-            iconSource = require('../../assets/icons/notification.png');
-            label = 'Notification';
-          } else if (route.name === 'Appointment') {
-            iconSource = require('../../assets/icons/calendaryo.png');
-            label = 'Appoint';
-          } else if (route.name === 'Profile') {
+          } else if (route.name === 'Request') {
+            iconSource = require('../../assets/icons/request.png');
+            label = 'Request';
+          } else if (route.name === 'ProfileStack') {
             iconSource = require('../../assets/icons/profile.png');
             label = 'Profile';
           }
@@ -76,10 +75,11 @@ export default function AppTabs() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Notification" component={NotificationScreen} />
-      <Tab.Screen name="Appointment" component={AppointmentScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="HomeStack" component={HomeStack} />
+      <Tab.Screen name="Request" component={RequestScreen} />
+      <Tab.Screen name="ProfileStack" component={ProfileStack} />
     </Tab.Navigator>
+
+  </>
   );
 }

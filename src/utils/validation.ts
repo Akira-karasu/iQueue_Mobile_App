@@ -5,10 +5,20 @@ export type ValidationResult = {
 };
 
 export function validateAuth(email: string, password: string): ValidationResult {
-  const emailResult = validateEmail(email);
-  if (!emailResult.valid) return emailResult;
-  const passwordResult = validatePassword(password);
-  if (!passwordResult.valid) return passwordResult;
+  if (!email) return { valid: false, message: 'Email is required.' };
+  if (!password) return { valid: false, message: 'Password is required.' };
+  if (email !== "akira11@gmail.com" || password !== "password123") return { valid: false, message: 'Invalid email or password.' };
+  return { valid: true };
+}
+
+export function validateOtp(otp: number): ValidationResult {
+  if (!otp) return { valid: false, message: 'OTP is required.'};
+  return { valid: true };
+}
+
+export function validateForgotPass(email: string): ValidationResult {
+  if (!email) return { valid: false, message: 'Email is required.' };
+  if (email !== "akira11@gmail.com") return { valid: false, message: 'email not exist' };
   return { valid: true };
 }
 
@@ -47,6 +57,4 @@ export function validateConfirmPassword(password: string, confirmPassword: strin
 
 
 
-// Example usage:
-// const emailResult = validateEmail(email);
-// if (!emailResult.valid) showMessage(emailResult.message);
+

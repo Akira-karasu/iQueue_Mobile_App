@@ -1,21 +1,21 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Button from '../Button';
-import Card from '../Card';
-import CustomRadioButton from '../CustomRadioButton';
-import IconButton from '../IconButton';
-import Input from '../Input';
-import Modals from '../Modal';
+import Button from '../buttons/Button';
+import CustomRadioButton from '../buttons/CustomRadioButton';
+import IconButton from '../buttons/IconButton';
+import ToggleOfficeButton from '../buttons/ToggleOfficeButton';
+import Card from '../cards/Card';
+import Input from '../inputs/Input';
+import Modals from '../modals/Modal';
 import CustomSelect from '../select';
-import ToggleOfficeButton from '../ToggleOfficeButton';
 
 
 
-    const roles = [
-        { label: 'Student', value: 'Student', image: require('../../../assets/icons/Book.png') },
-        { label: 'Visitor', value: 'Visitor', image: require('../../../assets/icons/User.png') },
-        { label: 'Alumni', value: 'Alumni', image: require('../../../assets/icons/alumni.png') },
-    ];
+const roles = [
+    { label: 'Student', value: 'Student', image: require('../../../assets/icons/Book.png') },
+    { label: 'Visitor', value: 'Visitor', image: require('../../../assets/icons/User.png') },
+    { label: 'Alumni', value: 'Alumni', image: require('../../../assets/icons/alumni.png') },
+];
 
 
     
