@@ -1,5 +1,5 @@
 import Button from '@/src/components/buttons/Button';
-import CustomSelect from '@/src/components/buttons/select';
+import Dropdown from '@/src/components/buttons/Dropdown';
 import Card from '@/src/components/cards/Card';
 import Input from '@/src/components/inputs/Input';
 import StepBar from '@/src/components/layout/stepBar';
@@ -21,7 +21,7 @@ type StudentFormProps = {
   handleChange: (key: string, value: any) => void;
 };
 
-export default function StudentForm({
+function StudentForm({
   setSteps,
   open,
   step,
@@ -65,23 +65,28 @@ export default function StudentForm({
             required
           />
 
-          <CustomSelect
-            label="School Level"
-            options={DataYearLevel}
-            value={studentYearLevel}
-            onValueChange={(value) => handleChange('studentYearLevel', value)}            placeholder="Select Year Level"
-            required
+          <Dropdown
+            selectedValue={studentYearLevel}
+            onSelect={(value) => {
+              handleChange('studentYearLevel', value);
+            }}
+            data={DataYearLevel}
+            label='Select school year level'
+            title='School Year Level'
+            required={true}
           />
 
-          <CustomSelect
-            label="Grade Level"
-            options={DataGradeLevel}
-            value={studentGradeLevel}
-            onValueChange={(value) => handleChange('studentGradeLevel', value)}
-            placeholder="Select Grade Level"
-            required
+          <Dropdown
+            selectedValue={studentGradeLevel}
+            title='Grade Level'
+            onSelect={(value) => {
+              handleChange('studentGradeLevel', value);
+            }}
+            data={DataGradeLevel}
+            label='Select grade level'
+            required={true}
           />
-
+            
           <View style={styles.buttonContainer}>
             <Button
               title="Cancel"
@@ -91,10 +96,13 @@ export default function StudentForm({
               fontSize={18}
               onPress={open}
             />
-            <Button title="Next" fontSize={18} width="45%" onPress={() => setSteps(3)} />
+            <Button title="Next" fontSize={18} width="45%" onPress={() => setSteps(3)} disabled={studentName === '' || studentLrnNumber === '' || studentYearLevel === '' || studentGradeLevel === '' || studentSection === ''} />
           </View>
+
         </Card>
       </View>
     </>
   );
 }
+
+export default React.memo(StudentForm);

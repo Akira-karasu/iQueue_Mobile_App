@@ -1,3 +1,5 @@
+import { useRequestStore } from "@/src/store/requestStore";
+
 import { RequestStackParamList } from "@/src/types/navigation";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -9,8 +11,41 @@ type RequestScreenNavigationProp = NativeStackNavigationProp<
   "Request"
 >;
 
+type OfficeType = '' | 'Registrar Office' | 'Accounting Office';
+
+
+
 export function useRequest() {
+
+const { RegistrarRequestList, 
+  addRegistrarRequestItem, 
+  removeRegistrarRequestItem, 
+  clearRegistrarRequestList,
+  availableDocuments: DataDocuments,
+  setAvailableDocuments,
+  clearAccountingList,
+  addAccountingItem, 
+  removeAccountingItem,
+  removeDocumentFromDropdown, 
+  resetDocuments,
+  availablePayments: payment,
+  formData, 
+  setFormData,
+  AccountingRequestList,
+  resetFormData,
+  setRegistrarRequestList } =
+  useRequestStore();
+
+
   const Requestnavigation = useNavigation<RequestScreenNavigationProp>();
+
+  const RequestTransactionList = {}
+
+
+  const [DocumentSelect, setDocumentSelect] = React.useState<any>(null);
+
+
+ 
 
   const [Datarole, setRole] = React.useState(roles);
 
@@ -19,28 +54,94 @@ export function useRequest() {
   const [DataSection, setSection] = React.useState(section);
 
 
+
+  const [office, setOffice] = React.useState<OfficeType>('');
+
+
   const [steps, setSteps] = React.useState(0);
 
-  const [formData, setFormData] = React.useState({
-    role: "",
-    visitorName: "",
-    studentName: "",
-    studentLrnNumber: "",
-    studentYearLevel: "",
-    studentGradeLevel: "",
-    studentSection: "",
-    Requestransaction: [],
-  });
+    // List of currently selected payments
+  const selectedpayment = AccountingRequestList.requestList;
+
+  // Total cost of selected payments
+  const totalPaymentCost = AccountingRequestList.totalCost;
+
+  // Add a payment item
+  const addPayment = (item: { PaymentFees: string; Price: number }) => {
+    addAccountingItem(item);
+  };
+
+  // Remove a payment item
+  const removePayment = (paymentName: string) => {
+    removeAccountingItem(paymentName);
+  };
+
+  // Clear all payments
+  const clearPayments = () => {
+    clearAccountingList();
+  };
+
+  const selectedPayments = React.useMemo(
+    () => AccountingRequestList.requestList.map((item) => item.PaymentFees),
+    [AccountingRequestList]
+  );
+
+  // 🧠 Checkbox options (PaymentFees + price)
+  const paymentOptions = React.useMemo(
+    () =>
+      payment.map((item: any) => ({
+        id: item.PaymentFees,
+        paymentfees: item.PaymentFees,
+        price: item.Price.toFixed(2),
+      })),
+    [payment]
+  );
+
+  // 🪄 Handle when user toggles accounting items
+  const handleAccountingSelectionChange = React.useCallback(
+    (selectedIds: string[]) => {
+      // ✅ Add any new selections
+      selectedIds.forEach((id) => {
+        const exists = AccountingRequestList.requestList.some(
+          (p) => p.PaymentFees === id
+        );
+        if (!exists) {
+          const selectedItem = payment.find((p) => p.PaymentFees === id);
+          if (selectedItem) addAccountingItem(selectedItem);
+        }
+      });
+
+      // ❌ Remove any deselected
+      AccountingRequestList.requestList.forEach((item) => {
+        if (!selectedIds.includes(item.PaymentFees)) {
+          removeAccountingItem(item.PaymentFees);
+        }
+      });
+
+    },
+    
+
+    [AccountingRequestList, payment, addAccountingItem, removeAccountingItem]
+  );
+
+
+
+const handleSelect = React.useCallback(
+  (value: string) => {
+    const found = DataDocuments.find((doc) => doc.DocumentName === value);
+    setDocumentSelect(found || null);
+  },
+  [DataDocuments, setDocumentSelect] // ✅ dependencies
+);
+
 
   // Handle Change
 const handleChange = React.useCallback((key: string, value: any) => {
   setFormData((prev) => {
-    // 🧠 When role changes, reset other role-specific fields
-    if (key === 'role' && prev.role !== value) {
+    if (key === "role" && prev.role !== value) {
       return {
         ...prev,
         role: value,
-        // Reset everything that depends on the role
         visitorName: "",
         studentName: "",
         studentLrnNumber: "",
@@ -48,37 +149,75 @@ const handleChange = React.useCallback((key: string, value: any) => {
         studentGradeLevel: "",
         studentSection: "",
         Requestransaction: [],
+        TotalCost: 0,
       };
     }
-
-    // ✅ Default: normal field update
-    return {
-      ...prev,
-      [key]: value,
-    };
+    return { ...prev, [key]: value };
   });
 }, [setFormData]);
 
-  const handleDebug = () => {
-    console.log(formData);
-  };
 
-  // ✅ Handle Reset — clears all form data and resets step counter
-  const handleResetTransaction = React.useCallback((close: () => void) => {
-    setFormData({
-      role: "",
-      visitorName: "",
-      studentName: "",
-      studentLrnNumber: "",
-      studentYearLevel: "",
-      studentGradeLevel: "",
-      studentSection: "",
-      Requestransaction: [],
-    });
-    setSteps(0);
+  const handleSubmitTransaction = React.useCallback((close: () => void) => {
+    if (RegistrarRequestList.requestList.length > 0){
+      formData.Requestransaction.push(RegistrarRequestList);
+      console.log(formData);
+      clearRegistrarRequestList();
+    }
+
+    if (AccountingRequestList.requestList.length > 0){
+      formData.Requestransaction.push(AccountingRequestList);
+      console.log(formData);
+      clearAccountingList();
+    }
+
     close();
-    // setRole(roles); // optional — resets the roles array if it’s modified
-  }, []);
+  }, [formData, RegistrarRequestList]);
+
+  const handleDebug = React.useCallback(() => {
+    console.log(formData);
+  }, [formData]);
+
+const AddToRegistrarRequestlist = React.useCallback(() => {
+  if (!DocumentSelect) return;
+
+  const itemWithTotal = {
+    ...DocumentSelect,
+    Total: DocumentSelect.Price * (DocumentSelect.Quantity || 1),
+  };
+  
+
+  addRegistrarRequestItem(itemWithTotal);
+
+  // 🧠 remove globally, not just locally
+  removeDocumentFromDropdown(DocumentSelect.DocumentName);
+
+  setDocumentSelect(null);
+
+  setFormData((prev) => ({
+    ...prev,
+    TotalCost: prev.TotalCost + itemWithTotal.Total,
+  }))
+
+    handleDebug();
+
+}, [DocumentSelect, addRegistrarRequestItem, removeDocumentFromDropdown, setDocumentSelect, setFormData, handleDebug]);
+
+
+
+
+const handleResetTransaction = React.useCallback((close: () => void) => {
+  resetFormData();         
+  setSteps(0);
+  setRegistrarRequestList((prev) => ({
+    ...prev,
+    requestList: [],
+  }));
+  resetDocuments();
+  clearRegistrarRequestList();
+  clearAccountingList();
+  setDocumentSelect(null);
+  close();
+}, [resetFormData, setSteps, setRegistrarRequestList, resetDocuments, setDocumentSelect, clearRegistrarRequestList, clearAccountingList]);
 
   return {
     Requestnavigation,
@@ -88,14 +227,36 @@ const handleChange = React.useCallback((key: string, value: any) => {
     DataYearLevel,
     DataGradeLevel,
     DataSection,
+    office,
+    DataDocuments,
+    RequestTransactionList,
+    DocumentSelect,
+    RegistrarRequestList,
+    AccountingRequestList,
+    payment,
     setFormData,
     handleChange,
     handleDebug,
     handleResetTransaction,
+    handleSubmitTransaction,
     setSteps,
     setRole,
     setYearLevel,
     setGradeLevel,
-    setSection
+    setSection,
+    setOffice,
+    setDocumentSelect,
+    handleSelect,
+    AddToRegistrarRequestlist,
+    setRegistrarRequestList,
+    addAccountingItem,
+    removeAccountingItem,
+    clearAccountingList,
+    paymentOptions,
+    selectedPayments,
+    handleAccountingSelectionChange,
+    selectedpayment, 
+    removePayment, 
+    totalPaymentCost
   };
 }

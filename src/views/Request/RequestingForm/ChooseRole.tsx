@@ -17,7 +17,7 @@ export type ChooseRoleProps = {
 
 
 
-export default function ChooseRole({ setSteps, open, step, selectedRole, handleChange }: ChooseRoleProps) {
+function ChooseRole({ setSteps, open, step, selectedRole, handleChange }: ChooseRoleProps) {
 
     const {
         Datarole
@@ -53,3 +53,5 @@ export default function ChooseRole({ setSteps, open, step, selectedRole, handleC
         </>
     )
 }
+
+export default React.memo(ChooseRole);

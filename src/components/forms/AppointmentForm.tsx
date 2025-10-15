@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Button from '../buttons/Button';
 import CustomRadioButton from '../buttons/CustomRadioButton';
 import IconButton from '../buttons/IconButton';
-import ToggleOfficeButton from '../buttons/ToggleOfficeButton';
+import ToggleOfficeButton from '../buttons/OfficeButton';
 import Card from '../cards/Card';
 import Input from '../inputs/Input';
 import Modals from '../modals/Modal';

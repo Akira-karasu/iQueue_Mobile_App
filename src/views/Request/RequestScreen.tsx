@@ -1,4 +1,5 @@
 // RequestScreen.tsx
+import TransactionCost from '@/src/components/layout/TransactionCost';
 import UserBoarder from '@/src/components/layout/UserBoarder';
 import CancelTransaction from '@/src/components/modals/CancelTransaction';
 import SubmitTransaction from '@/src/components/modals/SubmidModal';
@@ -9,9 +10,11 @@ import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AlumniForm from './RequestingForm/AlumniForm';
 import ChooseRole from './RequestingForm/ChooseRole';
+import RequestForm from './RequestingForm/RequestForm';
 import StartForm from './RequestingForm/StartForm';
 import StudentForm from './RequestingForm/StudentForm';
 import VisitorForm from './RequestingForm/VisitorForm';
+
 
 export default function RequestScreen() {
 
@@ -23,6 +26,7 @@ export default function RequestScreen() {
         handleDebug,
         handleChange,
         setSteps,
+        handleSubmitTransaction,
         handleResetTransaction
     } = useRequest();
 
@@ -75,20 +79,56 @@ export default function RequestScreen() {
 
         {
           steps === 2 && formData.role === "Alumni" && (
-            <AlumniForm setSteps={setSteps} open={cancelModal.open} step={steps}/>
-          )
+            <AlumniForm 
+              setSteps={setSteps} 
+              open={cancelModal.open} 
+              step={steps}
+              studentName={formData.studentName}
+              studentLrnNumber={formData.studentLrnNumber}
+              studentYearLevel={formData.studentYearLevel}
+              setFormData={setFormData}
+              handleChange={handleChange}
+            />
+          ) 
         }
 
         {
           steps === 2 && formData.role === "Visitor" && (
-            <VisitorForm setSteps={setSteps} open={cancelModal.open} step={steps}/>
+            <VisitorForm 
+              setSteps={setSteps} 
+              open={cancelModal.open} 
+              step={steps}
+              visitorName={formData.visitorName}
+              studentName={formData.studentName}
+              studentLrnNumber={formData.studentLrnNumber}
+              studentYearLevel={formData.studentYearLevel}
+              studentGradeLevel={formData.studentGradeLevel}
+              studentSection={formData.studentSection}
+              setFormData={setFormData}
+              handleChange={handleChange}
+            />
           )
         }
 
+      {
+        steps === 3 && (
+          <>
+            <RequestForm 
+              setSteps={setSteps} 
+              step={steps}
+            />
+            <TransactionCost
+              TransactionCost={formData.TotalCost}
+              openCancel={cancelModal.open} 
+              openSubmit={submitModal.open}
+            />
+          </>
+        )
+      }
 
 
         <CancelTransaction visible={cancelModal.visible} onClose={cancelModal.close} handleResetTransaction={() => handleResetTransaction(cancelModal.close)}/>
-        <SubmitTransaction visible={submitModal.visible} onClose={submitModal.close} handleSubmitTransaction={() => {}}/>
+        <SubmitTransaction visible={submitModal.visible} onClose={submitModal.close} handleSubmitTransaction={() => handleSubmitTransaction(submitModal.close)}/>
       </View>
     </SafeAreaView>
   );

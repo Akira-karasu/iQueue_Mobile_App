@@ -7,7 +7,7 @@ export type StartFormProps = {
     setSteps: React.Dispatch<React.SetStateAction<number>>
 };
 
-export default function StartForm({ setSteps }: StartFormProps) { {
+function StartForm({ setSteps }: StartFormProps) { {
     return (
         <View style={styles.StarterStepcontainer}>
             <Image source={require('../../../../assets/icons/requirement.png')} style={{ width: 150, height: 150 }}/>
@@ -16,3 +16,5 @@ export default function StartForm({ setSteps }: StartFormProps) { {
         </View>
     );}
 }
+
+export default React.memo(StartForm);

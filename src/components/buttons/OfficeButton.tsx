@@ -18,8 +18,8 @@ const OfficeButton: React.FC<ToggleOfficeButtonProps> = ({ label, active, onPres
         <Image
           source={
             active
-              ? require('../../assets/icons/minus.png')
-              : require('../../assets/icons/plus.png')
+              ? require('../../../assets/icons/minus.png')
+              : require('../../../assets/icons/plus.png')
           }
           style={styles.icon}
         />
