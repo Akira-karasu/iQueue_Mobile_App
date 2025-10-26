@@ -8,13 +8,13 @@ const styles = StyleSheet.create({
   },
 
   FormContainer: {
-    padding: 20,
+    paddingHorizontal: 20,
     gap: 5
   },
 
   ValidationContainer: {
     gap: 3,
-    padding: 10,
+    padding: 5,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -22,7 +22,6 @@ const styles = StyleSheet.create({
 
   ActiveContainer: {
     gap: 3,
-    padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -35,6 +34,13 @@ const styles = StyleSheet.create({
   ValidationText: {
     color: 'red',
   },
+
+  TermsContainer: {
+    padding: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
 
 
 

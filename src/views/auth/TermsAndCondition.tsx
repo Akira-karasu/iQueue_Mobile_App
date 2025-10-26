@@ -1,7 +1,8 @@
 import Button from "@/src/components/buttons/Button";
 import Modal from "@/src/components/modals/Modal";
-import React, { useState } from "react";
-import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { useRegister } from "@/src/hooks/autHooks/useRegister";
+import React from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 type TermsAndConditionsProps = {
   visible: boolean;
@@ -10,9 +11,9 @@ type TermsAndConditionsProps = {
 };
 
 function TermsAndConditions({ visible, onClose, setHasAcceptedTerms}: TermsAndConditionsProps) {
-  const [checked, setChecked] = useState(false);
 
-
+  const { checked, setChecked } = useRegister();
+  
   return (
     <Modal
       visible={visible}
@@ -89,7 +90,7 @@ function TermsAndConditions({ visible, onClose, setHasAcceptedTerms}: TermsAndCo
         </View>
       </ScrollView>
 
-      <View style={styles.checkboxContainer}>
+      {/* <View style={styles.checkboxContainer}>
         <Switch
           value={checked}
           onValueChange={setChecked}
@@ -100,12 +101,15 @@ function TermsAndConditions({ visible, onClose, setHasAcceptedTerms}: TermsAndCo
         <Text style={styles.checkboxLabel}>
           I accept the Terms and Conditions
         </Text>
-      </View>
+      </View> */}
 
       <View style={styles.buttonsContainer}>
         <Button
           title="Decline"
-          onPress={onClose}
+          onPress={() => {
+            setHasAcceptedTerms(false);
+            onClose();
+          }}
           width={"48%"}
           fontSize={18}
           color="#393939"
@@ -117,9 +121,7 @@ function TermsAndConditions({ visible, onClose, setHasAcceptedTerms}: TermsAndCo
             setHasAcceptedTerms(true);
             onClose();
           }}
-          disabled={!checked}
           fontSize={18}
-          style={[!checked && { opacity: 0.5 }]}
           width={"48%"}
         />
       </View>

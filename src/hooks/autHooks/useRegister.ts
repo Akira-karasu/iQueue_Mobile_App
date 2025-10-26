@@ -1,3 +1,4 @@
+import { authService } from '@/src/services/authService';
 import { AuthStackParamList } from '@/src/types/navigation';
 import { validateConfirmPassword, validateEmail, validatePassword } from '@/src/utils/validation';
 import { useNavigation } from '@react-navigation/native';
@@ -7,6 +8,8 @@ import { useState } from 'react';
 type RegisterScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
 export function useRegister() {
+
+
 const navigation = useNavigation<RegisterScreenNavigationProp>();
 
 
@@ -16,10 +19,14 @@ const [confirmPassword, setConfirmPassword] = useState('');
 const [validationMessage, setValidationMessage] = useState(' ');
 const [isLoading, setIsLoading] = useState(false);
 const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
+const [checked, setChecked] = useState(false);
 
 const goToLogin = () => navigation.navigate('Login');
+const goToOtp = () => navigation.navigate('Otp', { email });
 
-const handleSignUp = async (open: () => void) => {
+
+
+const handleSignUp = async () => {
 const emailResult = validateEmail(email);
 if (!emailResult.valid) {
 setValidationMessage(emailResult.message || '');
@@ -38,31 +45,31 @@ if (!confirmResult.valid) {
   return;
 }
 
-
-setValidationMessage(' ');
-
-
-
   if (!hasAcceptedTerms) {
     open();
   } else {
     try {
       setIsLoading(true);
-      // Simulate registration logic (e.g. API call)
-      console.log('Registering user:', { email, password });
-      // navigation.navigate('NextStep'); // Example navigation
-      goToLogin();
-    } catch (error) {
-      setValidationMessage('Registration failed. Please try again.');
+        try {
+          await authService().register(email, password, hasAcceptedTerms);
+          console.log('new account registered, OTP sent');
+        } catch (err: any) {
+          if (err.message === 'Email not verified'){
+          }else{
+            return setValidationMessage(err.message);
+          }
+        }
+      await authService().register_send_otp(email);
+      goToOtp();
+      setValidationMessage(" ")
+    } catch (error: any) {
+      return setValidationMessage(error.message);
     } finally {
       setIsLoading(false);
     }
   }
 
-
-
-
-
+setValidationMessage(' ');
 
 };
 
@@ -80,5 +87,7 @@ goToLogin,
 isLoading,
 hasAcceptedTerms,
 setHasAcceptedTerms,
+checked, 
+setChecked
 };
 }

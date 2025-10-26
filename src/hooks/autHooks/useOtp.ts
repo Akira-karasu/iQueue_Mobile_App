@@ -1,3 +1,4 @@
+import { authService } from '@/src/services/authService';
 import { AuthStackParamList } from '@/src/types/navigation';
 import { validateOtp } from '@/src/utils/validation';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -16,20 +17,34 @@ export function useOtp() {
     const [validationMessage, setValidationMessage] = React.useState(" ");
     const [isLoading, setIsLoading] = React.useState(false);
 
-    const handleOtp = () => {
+
+    const handleOtp = async () => {
+        setIsLoading(true);
+
         const otpValidation = validateOtp(Number(Otp));
 
         if (!otpValidation.valid) {
             setValidationMessage(otpValidation.message || '');
+            setIsLoading(false);
             return;
         }
+        try {
+            const user = await authService().otp_verify(email, Otp);
+            console.log('OTP verified successfully');
+            console.log(user);
+            setIsLoading(false);
+            navigation.navigate('Login');
+        } catch (err: any) {
+            setValidationMessage(err.message);
+            setIsLoading(false);
+            return;
+        }finally{
+            setIsLoading(false);
+        }
 
-        setValidationMessage(' ');
-        setIsLoading(true);
-        navigation.navigate('Change', { email });
     };
 
-    const goToForgot = () => navigation.navigate('Forgot', { email });
+    const goToBack = () => navigation.goBack();
 
     return {
         navigation,
@@ -40,7 +55,8 @@ export function useOtp() {
         handleOtp,
         isLoading,
         setIsLoading,
-        goToForgot
+        goToBack,
+        email
     };
 }
 

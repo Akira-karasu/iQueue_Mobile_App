@@ -28,13 +28,13 @@ export default function RegisterScreen() {
     goToLogin,
     isLoading,
     hasAcceptedTerms,
-    setHasAcceptedTerms
+    setHasAcceptedTerms,
+    checked, 
+    setChecked
   } = useRegister();
 
   // Shared modal control
   const { visible, open, close } = useModal(false);
-
-
 
 
   return (
@@ -74,6 +74,10 @@ export default function RegisterScreen() {
               editable={!isLoading}
               required
             />
+            <View style={styles.ActiveContainer}>
+              <Text>Already have an account? </Text>
+              <Activity label="Login" onPress={goToLogin} />
+            </View>
           </View>
 
           {validationMessage ? (
@@ -82,19 +86,24 @@ export default function RegisterScreen() {
 
           <PasswordPolicy password={password} confirmPassword={confirmPassword} />
 
+          <View style={styles.TermsContainer}>
+              <View>
+                <Text>By signing up, you accept to our </Text>
+              </View>
+
+              <Activity
+                label={"Terms & Conditions"}
+                onPress={open}
+              />
+          </View>
+
           <Button
-            title={
-              hasAcceptedTerms ? "Sign up" : "Accept Terms & Conditions"
-            }
-            onPress={() => handleSignUp(open)}
+            title={"Verify & Sign Up"}
+            onPress={() => handleSignUp()}
             style={{ width: "100%" }}
-            disabled={isLoading}
+            disabled={!hasAcceptedTerms}
           />
 
-          <View style={styles.ActiveContainer}>
-            <Text>Already have an account? </Text>
-            <Activity label="Login" onPress={goToLogin} />
-          </View>
         </View>
 
         {/* Terms & Conditions modal */}

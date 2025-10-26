@@ -1,3 +1,4 @@
+import { authService } from '@/src/services/authService';
 import { AuthStackParamList } from '@/src/types/navigation';
 import { validateConfirmPassword, validatePassword } from '@/src/utils/validation';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -21,7 +22,8 @@ export function useChangePass() {
 
     const goToLogin = () => navigation.navigate('Login');
 
-    const handleChange = () => {
+    const handleChange = async () => {
+        setIsLoading(true);
         const passwordValidation = validatePassword(password);
         const confirmPasswordValidation = validateConfirmPassword(password, confirmPassword);
 
@@ -33,6 +35,16 @@ export function useChangePass() {
         if (!confirmPasswordValidation.valid) {
             setValidationMessage(confirmPasswordValidation.message || '');
             return;
+        }
+
+        try {
+            await authService().changePass(email, password);
+            console.log('Password changed successfully');
+        } catch (err: any) {
+            setValidationMessage(err.message);
+            return;
+        }finally{
+            setIsLoading(false);
         }
 
         goToLogin();

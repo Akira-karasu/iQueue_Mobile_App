@@ -7,9 +7,9 @@ export type ValidationResult = {
 export function validateAuth(email: string, password: string): ValidationResult {
   if (!email) return { valid: false, message: 'Email is required.' };
   if (!password) return { valid: false, message: 'Password is required.' };
-  if (email !== "akira11@gmail.com" || password !== "password123") return { valid: false, message: 'Invalid email or password.' };
   return { valid: true };
 }
+
 
 export function validateOtp(otp: number): ValidationResult {
   if (!otp) return { valid: false, message: 'OTP is required.'};
@@ -18,7 +18,6 @@ export function validateOtp(otp: number): ValidationResult {
 
 export function validateForgotPass(email: string): ValidationResult {
   if (!email) return { valid: false, message: 'Email is required.' };
-  if (email !== "akira11@gmail.com") return { valid: false, message: 'email not exist' };
   return { valid: true };
 }
 

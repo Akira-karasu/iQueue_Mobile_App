@@ -1,3 +1,4 @@
+import { useAuth } from '@/src/context/authContext';
 import { useProfile } from '@/src/hooks/appTabHooks/useProfile';
 import React from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
@@ -8,6 +9,8 @@ import style from './ProfileStyle';
 export default function ProfileScreen() {
 
   const { onGoToAccountSettings, onGoToAppSettings  } = useProfile();
+
+  const { logout } = useAuth();
 
 
   return (
@@ -35,7 +38,7 @@ export default function ProfileScreen() {
                 <Image source={require('../../../assets/icons/settingsCirc.png')} style={style.iconImage} />
                 <Text style={style.pressableText}>App Settings</Text>
              </Pressable>
-             <Pressable style={style.pressableButton}>
+             <Pressable style={style.pressableButton} onPress={() => logout()}>
                 <Image source={require('../../../assets/icons/LogoutCirc.png')} style={style.iconImage} />
                 <Text style={style.pressableText}>Logout</Text>
              </Pressable>

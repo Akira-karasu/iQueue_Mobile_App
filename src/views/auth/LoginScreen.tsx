@@ -29,7 +29,6 @@ return (
 <LinearGradient colors={['#C3F9E0', '#FFF']} style={styles.LinearGradient}> 
   <IconBar />
   <LogoTitle title="Login" />
-
     <View style={styles.FormContainer}>
       <View style={styles.InputContainer}>
         <Input

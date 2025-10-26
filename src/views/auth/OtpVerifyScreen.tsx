@@ -19,6 +19,7 @@ import styles from './authStyle';
 
 export default function OtpVerifyScreen(){
 
+
     const {
         Otp,
         setOtp,
@@ -27,7 +28,8 @@ export default function OtpVerifyScreen(){
         handleOtp,
         isLoading, 
         setIsLoading,
-        goToForgot
+        goToBack,
+        email
     } = useOtp();
 
     const { secondsLeft, startTimer, resendOtp, isCounting } = useOtpTimer(30);
@@ -56,19 +58,20 @@ export default function OtpVerifyScreen(){
                         onChangeText={setOtp}
                         keyboardType="numeric"
                         editable={true}
+                        maxLength={6}
                     />
                 </View>
             {validationMessage ? (
               <Text style={styles.ValidationText}>{validationMessage}</Text>
             ) : null}
 
-            <OtpTimer secondsLeft={secondsLeft} resendOtp={resendOtp} isCounting={isCounting} />
+            <OtpTimer secondsLeft={secondsLeft} resendOtp={resendOtp} isCounting={isCounting} emailVerification={email} />
 
             <Button title={"Verify"} onPress={handleOtp} disabled={isLoading} style={{ width: "100%" }} />
 
             <View style={styles.ActiveContainer}>
                 <Text>Not receive OTP? </Text>
-                <Activity label="Forgot Password" onPress={goToForgot} />
+                <Activity label="Go back" onPress={goToBack} />
             </View>
 
             </View>

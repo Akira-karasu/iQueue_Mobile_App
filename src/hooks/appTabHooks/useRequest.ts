@@ -161,7 +161,7 @@ const handleChange = React.useCallback((key: string, value: any) => {
     if (RegistrarRequestList.requestList.length > 0){
       formData.Requestransaction.push(RegistrarRequestList);
       console.log(formData);
-      clearRegistrarRequestList();
+
     }
 
     if (AccountingRequestList.requestList.length > 0){
@@ -169,6 +169,9 @@ const handleChange = React.useCallback((key: string, value: any) => {
       console.log(formData);
       clearAccountingList();
     }
+
+    clearRegistrarRequestList();
+    clearAccountingList();
 
     close();
   }, [formData, RegistrarRequestList]);

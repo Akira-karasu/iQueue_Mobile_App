@@ -36,16 +36,12 @@ const PasswordPolicy: React.FC<PasswordPolicyProps> = ({ password, confirmPasswo
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginBottom: 12,
   },
   title: {
     fontWeight: 'bold',
     fontSize: 16,
     marginBottom: 4,
     color: '#14AD59',
-  },
-  listContainer: {
-    marginLeft: 8,
   },
   item: {
     fontSize: 14,

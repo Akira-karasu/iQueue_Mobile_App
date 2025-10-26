@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
   link: {
     fontSize: 16,
     fontWeight: '500',
-    paddingVertical: 8,
+    paddingVertical: 5,
   },
 });
 
