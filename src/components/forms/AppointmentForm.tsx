@@ -1,21 +1,21 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Button from '../Button';
-import Card from '../Card';
-import CustomRadioButton from '../CustomRadioButton';
-import IconButton from '../IconButton';
-import Input from '../Input';
-import Modals from '../Modal';
+import Button from '../buttons/Button';
+import CustomRadioButton from '../buttons/CustomRadioButton';
+import IconButton from '../buttons/IconButton';
+import ToggleOfficeButton from '../buttons/OfficeButton';
+import Card from '../cards/Card';
+import Input from '../inputs/Input';
+import Modals from '../modals/Modal';
 import CustomSelect from '../select';
-import ToggleOfficeButton from '../ToggleOfficeButton';
 
 
 
-    const roles = [
-        { label: 'Student', value: 'Student', image: require('../../../assets/icons/Book.png') },
-        { label: 'Visitor', value: 'Visitor', image: require('../../../assets/icons/User.png') },
-        { label: 'Alumni', value: 'Alumni', image: require('../../../assets/icons/alumni.png') },
-    ];
+const roles = [
+    { label: 'Student', value: 'Student', image: require('../../../assets/icons/Book.png') },
+    { label: 'Visitor', value: 'Visitor', image: require('../../../assets/icons/User.png') },
+    { label: 'Alumni', value: 'Alumni', image: require('../../../assets/icons/alumni.png') },
+];
 
 
     
@@ -379,7 +379,8 @@ export function OfficeTransaction({
     registrarDocuments, setRegistrarDocuments,
     registrarOffice, setTransactionRegistrar,
     accountingPayment, setAccountingPayment,
-    accountingOffice, setTransactionAccounting
+    accountingOffice, setTransactionAccounting,
+    handleSubmit
 }){
 
     const [subPage, setSubPage] = React.useState(null);
@@ -460,28 +461,6 @@ const addPaymentFee = (idx) => {
   });
 };
 
-const handleSubmitTransaction = () => {
-  const transactionObj = {};
-  const regTotal = (registrarOffice?.total) || 0;
-  const accTotal = (accountingOffice?.total) || 0;
-  const totalCost = regTotal + accTotal;
-
-  if (Array.isArray(registrarOffice?.requestedDocument) && registrarOffice.requestedDocument.length) {
-    transactionObj.registrarOffice = registrarOffice;
-  }
-
-  if (Array.isArray(accountingOffice?.requestedPayment) && accountingOffice.requestedPayment.length) {
-    transactionObj.accountingOffice = accountingOffice;
-  }
-
-  transactionObj.total = totalCost;
-
-  // set this into form data as object
-  setTransactionValue(transactionObj);
-  console.log('Submitted transaction:', transactionObj);
-};
-
-
     return (
         <View style={{ padding: 10, flex: 1 }}>
         {!subPage ? (
@@ -504,7 +483,7 @@ const handleSubmitTransaction = () => {
                     <ToggleOfficeButton
                         label="Registrar Office"
                         active={
-                            registrarOffice.Office === "Registrar Office" && Array.isArray(registrarOffice.requestedDocument) &&
+                            Array.isArray(registrarOffice.requestedDocument) &&
                             registrarOffice.requestedDocument.some(doc => doc.Quantity > 0)
                         }
                         onPress={() => setSubPage("Registrar Office")}
@@ -512,7 +491,7 @@ const handleSubmitTransaction = () => {
                     <ToggleOfficeButton
                         label="Accounting Office"
                         active={
-                            accountingOffice.Office === "Accounting Office" && Array.isArray(accountingOffice.requestedPayment) &&
+                            Array.isArray(accountingOffice.requestedPayment) &&
                             accountingOffice.requestedPayment.length > 0
                         }
                         onPress={() => setSubPage("Accounting Office")}
@@ -653,7 +632,7 @@ const handleSubmitTransaction = () => {
                             <Button
                                 title="Submit"
                                 width={"48%"}
-                                onPress={handleSubmitTransaction}
+                                onPress={handleSubmit}
                                 
                                 
                                 disabled={
@@ -817,12 +796,31 @@ export function CancelModal({ modalvisible, onBack,  onConfirmCancel}) {
             visible={modalvisible}
             onClose={onBack}
             width={"85%"}
-            title="Cancel Appointment"
+            title="Cancel request transaction"
             message="Are you sure you want to cancel your appointment?"
         >
             <View  style={styles.buttonsContainer}>
                 <Button title="No" fontSize={20}  backgroundColor='#FF0000' width={"40%"} onPress={onBack} />
                 <Button title="Yes" fontSize={20} backgroundColor='#14AD59' width={"40%"} onPress={() => {onConfirmCancel();}} />
+            </View>
+        </Modals>
+    );
+}
+
+export function ConfirmSubmitModal({ modalvisible, onBack,  onSubmitTransaction}) {
+    
+    return (
+        
+        <Modals
+            visible={modalvisible}
+            onClose={onBack}
+            width={"85%"}
+            title="Request transaction confirmation"
+            message="Are you sure you want to request this transaction?"
+        >
+            <View  style={styles.buttonsContainer}>
+                <Button title="No" fontSize={20}  backgroundColor='#FF0000' width={"40%"} onPress={onBack} />
+                <Button title="Yes" fontSize={20} backgroundColor='#14AD59' width={"40%"} onPress={() => {onSubmitTransaction();}} />
             </View>
         </Modals>
     );
