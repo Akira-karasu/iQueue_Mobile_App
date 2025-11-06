@@ -27,9 +27,6 @@ export default function StepBar({
       )}
       <View style={[styles.titleHeader, { width: display ? "85%" : "100%" }]}>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>
-          Step {start} to {end}
-        </Text>
       </View>
     </View>
   );

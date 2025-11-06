@@ -1,15 +1,14 @@
 import api from '../api/api-connection';
 
 export function authService() {
-const register = async (email: string, password: string, termsAccepted: boolean) => {
-  try {
-    const response = await api.post('/mobile-users/sign-up', { email, password, termsAccepted });
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'Registration failed');
-  }
-};
-
+  const register = async (email: string, password: string, termsAccepted: boolean) => {
+    try {
+      const response = await api.post('/mobile-users/sign-up', { email, password, termsAccepted });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Registration failed');
+    }
+  };
 
   const register_send_otp = async (email: string) => {
     try {

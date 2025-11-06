@@ -37,8 +37,6 @@ function RegistrarOfficeForm() {
           </Text>
         </View>
 
-
-
         <Dropdown
           title="Documents"
           label="Select a document"

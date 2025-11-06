@@ -1,12 +1,15 @@
 import Button from '@/src/components/buttons/Button';
 import Dropdown from '@/src/components/buttons/Dropdown';
+import { RadioButton } from '@/src/components/buttons/Radiobutton';
 import Card from '@/src/components/cards/Card';
 import Input from '@/src/components/inputs/Input';
 import StepBar from '@/src/components/layout/stepBar';
+import { options } from '@/src/constant/data';
 import { useRequest } from '@/src/hooks/appTabHooks/useRequest';
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import styles from './RequestFormStyle';
+import { useRequestStore } from "@/src/store/requestStore";
 
 type StudentFormProps = {
   setSteps: React.Dispatch<React.SetStateAction<number>>;
@@ -30,24 +33,25 @@ function StudentForm({
   studentYearLevel,
   studentGradeLevel,
   studentSection,
-  setFormData,
   handleChange,
 }: StudentFormProps) {
-  const { DataYearLevel, setYearLevel, DataGradeLevel, setGradeLevel } = useRequest();
+  const { DataYearLevel, DataGradeLevel, selectedOption, setSelectedOption } = useRequest();
+  const { formData } = useRequestStore();
 
   return (
     <>
-      <StepBar start={step} end={3} title="Fill your information" display={true} onBack={() => setSteps(1)} />
+      <StepBar title="Fill your information" display={false} />
       <View style={styles.mainContainer}>
         <Card padding={25}>
           <Input
-            label="Student Name"
-            placeholder="Enter Student Name"
+            label="Full Name"
+            placeholder="Enter Full Name"
             value={studentName}
             onChangeText={(value) => handleChange('studentName', value)}
             required
           />
-          <Input
+
+          {/* <Input
             label="LRN"
             placeholder="Enter Learner Reference Number"
             value={studentLrnNumber}
@@ -55,7 +59,7 @@ function StudentForm({
             keyboardType="numeric"
             maxLength={12}
             required
-          />
+          /> */}
 
           <Input
             label="Section"
@@ -86,6 +90,19 @@ function StudentForm({
             label='Select grade level'
             required={true}
           />
+          <Text>Alumni student?</Text>
+          <View style={styles.radioButtonContainer}>
+            {options.map((option: { label: string; value: string | number | boolean }) => (
+              <RadioButton
+                key={option.value}
+                label={option.label}
+                value={option.value}
+                selected={formData.isAlumni === option.value}
+                onSelect={(value) => handleChange('isAlumni', value)}
+              />
+
+            ))}
+          </View>
             
           <View style={styles.buttonContainer}>
             <Button
@@ -96,9 +113,8 @@ function StudentForm({
               fontSize={18}
               onPress={open}
             />
-            <Button title="Next" fontSize={18} width="45%" onPress={() => setSteps(3)} disabled={studentName === '' || studentLrnNumber === '' || studentYearLevel === '' || studentGradeLevel === '' || studentSection === ''} />
+            <Button title="Next" fontSize={18} width="45%" onPress={() => setSteps(2)} disabled={studentName === '' || studentYearLevel === '' || studentGradeLevel === '' || studentSection === '' || formData.isAlumni === null} />
           </View>
-
         </Card>
       </View>
     </>

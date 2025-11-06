@@ -8,13 +8,11 @@ import useModal from '@/src/hooks/componentHooks/useModal';
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AlumniForm from './RequestingForm/AlumniForm';
-import ChooseRole from './RequestingForm/ChooseRole';
 import RequestForm from './RequestingForm/RequestForm';
 import StartForm from './RequestingForm/StartForm';
 import StudentForm from './RequestingForm/StudentForm';
-import VisitorForm from './RequestingForm/VisitorForm';
-
+import { useAuth } from "@/src/context/authContext";
+import { useRequestStore } from '@/src/store/requestStore';
 
 export default function RequestScreen() {
 
@@ -22,7 +20,6 @@ export default function RequestScreen() {
         Requestnavigation,
         formData,
         steps,
-        setFormData,
         handleDebug,
         handleChange,
         setSteps,
@@ -33,8 +30,23 @@ export default function RequestScreen() {
     const cancelModal = useModal();
     const submitModal = useModal();
 
-    useEffect(() => {
-        handleDebug();
+    const { getUserEmail } = useAuth();
+    const email = getUserEmail();
+    const setFormData = useRequestStore((state) => state.setFormData);
+
+    
+
+    React.useEffect(() => {
+      if (email) {
+        setFormData((prev) => ({
+          ...prev,
+          email: email, // example usage
+        }));
+      }
+    }, [email]);
+
+    React.useEffect(() => {
+      handleDebug();
     }, [handleDebug]);
 
   return (
@@ -48,7 +60,7 @@ export default function RequestScreen() {
           )
         }
 
-        {
+        {/* {
           steps === 1 && (
               <ChooseRole 
                 setSteps={setSteps} 
@@ -59,16 +71,15 @@ export default function RequestScreen() {
               />
           )
           
-        }
+        } */}
 
         {
-          steps === 2 && formData.role === "Student" && (
+          steps === 1 && (
             <StudentForm 
               setSteps={setSteps} 
               open={cancelModal.open} 
               step={steps} 
               studentName={formData.studentName}
-              studentLrnNumber={formData.studentLrnNumber}
               studentYearLevel={formData.studentYearLevel}
               studentGradeLevel={formData.studentGradeLevel}
               studentSection={formData.studentSection}
@@ -77,7 +88,7 @@ export default function RequestScreen() {
           )
         }
 
-        {
+        {/* {
           steps === 2 && formData.role === "Alumni" && (
             <AlumniForm 
               setSteps={setSteps} 
@@ -90,9 +101,9 @@ export default function RequestScreen() {
               handleChange={handleChange}
             />
           ) 
-        }
+        } */}
 
-        {
+        {/* {
           steps === 2 && formData.role === "Visitor" && (
             <VisitorForm 
               setSteps={setSteps} 
@@ -108,17 +119,17 @@ export default function RequestScreen() {
               handleChange={handleChange}
             />
           )
-        }
+        } */}
 
       {
-        steps === 3 && (
+        steps === 2 && (
           <>
             <RequestForm 
               setSteps={setSteps} 
               step={steps}
             />
             <TransactionCost
-              TransactionCost={formData.TotalCost}
+              // TransactionCo st={formData.TotalCost}
               openCancel={cancelModal.open} 
               openSubmit={submitModal.open}
             />
@@ -126,10 +137,14 @@ export default function RequestScreen() {
         )
       }
 
-
         <CancelTransaction visible={cancelModal.visible} onClose={cancelModal.close} handleResetTransaction={() => handleResetTransaction(cancelModal.close)}/>
         <SubmitTransaction visible={submitModal.visible} onClose={submitModal.close} handleSubmitTransaction={() => handleSubmitTransaction(submitModal.close)}/>
+
+      
+
+      
       </View>
     </SafeAreaView>
+    
   );
 }

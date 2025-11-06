@@ -1,82 +1,88 @@
 import { useRequestStore } from "@/src/store/requestStore";
-
-import { RequestStackParamList } from "@/src/types/navigation";
+import { AppTabsParamList, RequestStackParamList } from "@/src/types/navigation";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
 import { grades, roles, section, yearLevels } from "../../constant/data";
+import { submitRequestTransaction } from "../../services/OfficeService";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+
 
 type RequestScreenNavigationProp = NativeStackNavigationProp<
   RequestStackParamList,
   "Request"
 >;
 
-type OfficeType = '' | 'Registrar Office' | 'Accounting Office';
+type HomeTabNavigationProp = BottomTabNavigationProp<AppTabsParamList, "HomeStack">;
 
 
+
+
+
+type OfficeType = "" | "Registrar Office" | "Accounting Office";
 
 export function useRequest() {
-
-const { RegistrarRequestList, 
-  addRegistrarRequestItem, 
-  removeRegistrarRequestItem, 
-  clearRegistrarRequestList,
-  availableDocuments: DataDocuments,
-  setAvailableDocuments,
-  clearAccountingList,
-  addAccountingItem, 
-  removeAccountingItem,
-  removeDocumentFromDropdown, 
-  resetDocuments,
-  availablePayments: payment,
-  formData, 
-  setFormData,
-  AccountingRequestList,
-  resetFormData,
-  setRegistrarRequestList } =
-  useRequestStore();
+  const {
+    RegistrarRequestList,
+    addRegistrarRequestItem,
+    removeRegistrarRequestItem,
+    clearRegistrarRequestList,
+    availableDocuments: DataDocuments,
+    setAvailableDocuments,
+    clearAccountingList,
+    addAccountingItem,
+    removeAccountingItem,
+    removeDocumentFromDropdown,
+    resetDocuments,
+    availablePayments: payment,
+    formData,
+    setFormData,
+    AccountingRequestList,
+    resetFormData,
+    setRegistrarRequestList,
+  } = useRequestStore();
 
 
   const Requestnavigation = useNavigation<RequestScreenNavigationProp>();
 
-  const RequestTransactionList = {}
+  const TabNavigation = useNavigation<HomeTabNavigationProp>();
 
+  const GoToRequestTransaction = React.useCallback(() => {
+    Requestnavigation.replace("Transaction");
+  }, [Requestnavigation]);
+
+  const GoToHomeStack = React.useCallback(() => {
+    TabNavigation.navigate("HomeStack");
+  }, [TabNavigation]);
+
+
+  const RequestTransactionList = {};
 
   const [DocumentSelect, setDocumentSelect] = React.useState<any>(null);
-
-
- 
+  const [selectedOption, setSelectedOption] = React.useState<
+    string | number | boolean | null
+  >(false);
 
   const [Datarole, setRole] = React.useState(roles);
-
   const [DataYearLevel, setYearLevel] = React.useState(yearLevels);
   const [DataGradeLevel, setGradeLevel] = React.useState(grades);
   const [DataSection, setSection] = React.useState(section);
 
-
-
-  const [office, setOffice] = React.useState<OfficeType>('');
-
-
+  const [office, setOffice] = React.useState<OfficeType>("");
   const [steps, setSteps] = React.useState(0);
 
-    // List of currently selected payments
+  // 💵 Accounting selections
   const selectedpayment = AccountingRequestList.requestList;
-
-  // Total cost of selected payments
   const totalPaymentCost = AccountingRequestList.totalCost;
 
-  // Add a payment item
   const addPayment = (item: { PaymentFees: string; Price: number }) => {
     addAccountingItem(item);
   };
 
-  // Remove a payment item
-  const removePayment = (paymentName: string) => {
+const removePayment = (paymentName: string) => {
     removeAccountingItem(paymentName);
   };
 
-  // Clear all payments
   const clearPayments = () => {
     clearAccountingList();
   };
@@ -86,7 +92,6 @@ const { RegistrarRequestList,
     [AccountingRequestList]
   );
 
-  // 🧠 Checkbox options (PaymentFees + price)
   const paymentOptions = React.useMemo(
     () =>
       payment.map((item: any) => ({
@@ -97,10 +102,9 @@ const { RegistrarRequestList,
     [payment]
   );
 
-  // 🪄 Handle when user toggles accounting items
   const handleAccountingSelectionChange = React.useCallback(
     (selectedIds: string[]) => {
-      // ✅ Add any new selections
+      // ✅ Add new selections
       selectedIds.forEach((id) => {
         const exists = AccountingRequestList.requestList.some(
           (p) => p.PaymentFees === id
@@ -111,116 +115,130 @@ const { RegistrarRequestList,
         }
       });
 
-      // ❌ Remove any deselected
+      // ❌ Remove deselected
       AccountingRequestList.requestList.forEach((item) => {
         if (!selectedIds.includes(item.PaymentFees)) {
           removeAccountingItem(item.PaymentFees);
         }
       });
-
     },
-    
-
     [AccountingRequestList, payment, addAccountingItem, removeAccountingItem]
   );
 
+  const handleSelect = React.useCallback(
+    (value: string) => {
+      const found = DataDocuments.find((doc) => doc.DocumentName === value);
+      setDocumentSelect(found || null);
+    },
+    [DataDocuments, setDocumentSelect]
+  );
 
-
-const handleSelect = React.useCallback(
-  (value: string) => {
-    const found = DataDocuments.find((doc) => doc.DocumentName === value);
-    setDocumentSelect(found || null);
-  },
-  [DataDocuments, setDocumentSelect] // ✅ dependencies
-);
-
-
-  // Handle Change
-const handleChange = React.useCallback((key: string, value: any) => {
-  setFormData((prev) => {
-    if (key === "role" && prev.role !== value) {
-      return {
+  // 🧠 Handle form change (for updated formData structure)
+  const handleChange = React.useCallback(
+    (key: keyof typeof formData, value: any) => {
+      setFormData((prev) => ({
         ...prev,
-        role: value,
-        visitorName: "",
-        studentName: "",
-        studentLrnNumber: "",
-        studentYearLevel: "",
-        studentGradeLevel: "",
-        studentSection: "",
-        Requestransaction: [],
-        TotalCost: 0,
-      };
-    }
-    return { ...prev, [key]: value };
-  });
-}, [setFormData]);
+        [key]: value,
+      }));
+    },
+    [setFormData]
+  );  
 
+  const handleSubmitTransaction = React.useCallback(
+    (close: () => void) => {
+      const updatedTransactions = {};
 
-  const handleSubmitTransaction = React.useCallback((close: () => void) => {
-    if (RegistrarRequestList.requestList.length > 0){
-      formData.Requestransaction.push(RegistrarRequestList);
-      console.log(formData);
+      if (RegistrarRequestList.requestList.length > 0) {
+        updatedTransactions.RegistrarOffice = RegistrarRequestList;
+      }
 
-    }
+      if (AccountingRequestList.requestList.length > 0) {
+        updatedTransactions.AccountingOffice = AccountingRequestList;
+      }
 
-    if (AccountingRequestList.requestList.length > 0){
-      formData.Requestransaction.push(AccountingRequestList);
-      console.log(formData);
+      setFormData((prev) => ({
+        ...prev,
+        RequestTransaction: updatedTransactions,
+      }));
+
+      GoToHomeStack();
+
+      submitRequestTransaction(formData, updatedTransactions);
+  
+      clearRegistrarRequestList();
       clearAccountingList();
-    }
+      close();
+      handleResetTransaction(close);
+      
+    },
+    [
+      formData,
+      RegistrarRequestList,
+      AccountingRequestList,
+      clearRegistrarRequestList,
+      clearAccountingList,
+      GoToRequestTransaction,
+      setFormData,
+    ]
+  );
 
-    clearRegistrarRequestList();
-    clearAccountingList();
-
-    close();
-  }, [formData, RegistrarRequestList]);
-
-  const handleDebug = React.useCallback(() => {
-    console.log(formData);
+const handleDebug = React.useCallback(() => {
+  console.log(
+    "🧾 Form Data Debug:",
+    "\nEmail:", formData.email,
+    "\nStudent Name:", formData.studentName,
+    "\nSection:", formData.studentSection,
+    "\nYear Level:", formData.studentYearLevel,
+    "\nGrade Level:", formData.studentGradeLevel,
+    "\nIs Alumni:", formData.isAlumni,
+  );
   }, [formData]);
 
-const AddToRegistrarRequestlist = React.useCallback(() => {
-  if (!DocumentSelect) return;
+  const AddToRegistrarRequestlist = React.useCallback(() => {
+    if (!DocumentSelect) return;
 
-  const itemWithTotal = {
-    ...DocumentSelect,
-    Total: DocumentSelect.Price * (DocumentSelect.Quantity || 1),
-  };
-  
+    const itemWithTotal = {
+      ...DocumentSelect,
+      Total: DocumentSelect.Price * (DocumentSelect.Quantity || 1),
+    };
 
-  addRegistrarRequestItem(itemWithTotal);
-
-  // 🧠 remove globally, not just locally
-  removeDocumentFromDropdown(DocumentSelect.DocumentName);
-
-  setDocumentSelect(null);
-
-  setFormData((prev) => ({
-    ...prev,
-    TotalCost: prev.TotalCost + itemWithTotal.Total,
-  }))
+    addRegistrarRequestItem(itemWithTotal);
+    removeDocumentFromDropdown(DocumentSelect.DocumentName);
+    setDocumentSelect(null);
 
     handleDebug();
+  }, [
+    DocumentSelect,
+    addRegistrarRequestItem,
+    removeDocumentFromDropdown,
+    setDocumentSelect,
+    handleDebug,
+  ]);
 
-}, [DocumentSelect, addRegistrarRequestItem, removeDocumentFromDropdown, setDocumentSelect, setFormData, handleDebug]);
-
-
-
-
-const handleResetTransaction = React.useCallback((close: () => void) => {
-  resetFormData();         
-  setSteps(0);
-  setRegistrarRequestList((prev) => ({
-    ...prev,
-    requestList: [],
-  }));
-  resetDocuments();
-  clearRegistrarRequestList();
-  clearAccountingList();
-  setDocumentSelect(null);
-  close();
-}, [resetFormData, setSteps, setRegistrarRequestList, resetDocuments, setDocumentSelect, clearRegistrarRequestList, clearAccountingList]);
+  const handleResetTransaction = React.useCallback(
+    (close: () => void) => {
+      resetFormData();
+      setSteps(0);
+      setRegistrarRequestList((prev) => ({
+        ...prev,
+        requestList: [],
+      }));
+      resetDocuments();
+      clearRegistrarRequestList();
+      clearAccountingList();
+      setDocumentSelect(null);
+      close();
+    },
+    [
+      resetFormData,
+      setSteps,
+      setRegistrarRequestList,
+      resetDocuments,
+      clearRegistrarRequestList,
+      clearAccountingList,
+      setDocumentSelect,
+    ]
+  );
 
   return {
     Requestnavigation,
@@ -258,8 +276,10 @@ const handleResetTransaction = React.useCallback((close: () => void) => {
     paymentOptions,
     selectedPayments,
     handleAccountingSelectionChange,
-    selectedpayment, 
-    removePayment, 
-    totalPaymentCost
+    selectedpayment,
+    removePayment,
+    totalPaymentCost,
+    selectedOption,
+    setSelectedOption,
   };
 }
