@@ -38,10 +38,10 @@ function RequestForm ({setSteps, step} : RequestFormProps) {
             <>
             <StepBar
                 start={step}
-                end={3}
+                end={2}
                 title="Request Transaction"
                 display={true}
-                onBack={() => setSteps(2)}
+                onBack={() => setSteps(1)}
             />
             <View style={styles.mainContainer}>
             <Card padding={25}>

@@ -16,6 +16,7 @@ type AuthContextType = {
   logout: () => void;
   saveToken: (newToken: string | null) => void;
   isTokenExpired: () => Promise<boolean>;
+  getUserEmail: () => string | null;
 };
 
 // ✅ Props for the provider
@@ -48,7 +49,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loadToken();
   }, []);
 
-  // Save or remove token in AsyncStorage
+// Save or remove token in AsyncStorage
 const saveToken = (newToken: string | null) => {
   const stringToken = typeof newToken === 'string' ? newToken : JSON.stringify(newToken);
   setTokenState(stringToken);
@@ -59,8 +60,15 @@ const saveToken = (newToken: string | null) => {
   }
 };
 
-
-
+const getUserEmail = () => {
+  if (!token) return null;
+  try {
+    const decoded: any = jwtDecode(token);
+    return decoded.email;
+  } catch {
+    return null;
+  }
+};
 
 const login = (newToken: string) => {
   saveToken(newToken);
@@ -101,7 +109,8 @@ const logout = async () => {
         login,
         logout,
         saveToken,
-        isTokenExpired
+        isTokenExpired,
+        getUserEmail,
       }}
     >
       {children}

@@ -68,14 +68,19 @@ export const roles = [
     { label: 'Alumni', value: 'Alumni', image: require('../../assets/icons/alumni.png') },
 ];
 
-export const  yearLevels = [
-        { label: '2025', value: '2025' },
-        { label: '2024', value: '2024' },
-        { label: '2023', value: '2023' },
-        { label: '2022', value: '2022' },
-        { label: '2021', value: '2021' },
-        { label: '2020', value: '2020' },
-    ];
+export const options = [
+    { label: 'Yes', value: true },
+    { label: 'No', value: false },
+  ];
+
+const currentYear = new Date().getFullYear();
+
+export const yearLevels = Array.from({ length: currentYear - 1990 }, (_, i) => {
+  const startYear = currentYear - i - 1;
+  const endYear = startYear + 1;
+  const label = `${startYear} - ${endYear}`;
+  return { label, value: label };
+});
 
 export const grades = [
         { label: 'Grade 1', value: 'Grade 1' },

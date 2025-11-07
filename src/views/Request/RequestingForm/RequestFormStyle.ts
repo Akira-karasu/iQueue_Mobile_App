@@ -9,6 +9,14 @@ const styles = StyleSheet.create({
     gap: 30
   },
 
+  radioButtonContainer: {
+    padding: 10,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    gap: 20
+  },
+
   mainContainer :{
     flexGrow: 1,
     width: '100%',

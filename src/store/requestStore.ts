@@ -1,7 +1,10 @@
 import { documents, payment } from "@/src/constant/data";
 import { create } from "zustand";
+import { getDocuments, getPayments } from "../services/OfficeService";
 
 export interface RequestItem {
+  id: number;
+  type: "Request Document";
   DocumentName: string;
   Price: number;
   Quantity: number;
@@ -10,6 +13,8 @@ export interface RequestItem {
 }
 
 export interface AccountingItem {
+  id: number;
+  type: "Payment";
   PaymentFees: string;
   Price: number;
 }
@@ -26,16 +31,14 @@ export interface RegistrarRequestList {
   totalCost: number;
 }
 
+// ✅ Updated FormData type
 export interface FormData {
-  role: string;
-  visitorName: string;
+  email: string;
   studentName: string;
-  studentLrnNumber: string;
+  isAlumni: boolean | null;
   studentYearLevel: string;
   studentGradeLevel: string;
   studentSection: string;
-  Requestransaction: any[];
-  TotalCost: number;
 }
 
 interface RequestStore {
@@ -43,6 +46,8 @@ interface RequestStore {
   AccountingRequestList: AccountingRequestList;
   availableDocuments: typeof documents;
   availablePayments: typeof payment;
+
+  setEmailFromToken: (email: string) => void;
 
   // 🧠 Global Form Data
   formData: FormData;
@@ -54,7 +59,7 @@ interface RequestStore {
   removeDocumentFromDropdown: (documentName: string) => void;
   resetDocuments: () => void;
 
-  // 🧾 Payment handling
+  // 💵 Payment handling
   setAvailablePayments: (docs: typeof payment) => void;
 
   // 🏛 Registrar list management
@@ -69,9 +74,17 @@ interface RequestStore {
   addAccountingItem: (item: AccountingItem) => void;
   removeAccountingItem: (paymentName: string) => void;
   clearAccountingList: () => void;
+  
 }
 
 export const useRequestStore = create<RequestStore>((set) => ({
+
+  setEmailFromToken: (email: string) =>
+  set((state) => ({
+    formData: { ...state.formData, email },
+  })),
+
+
   RegistrarRequestList: {
     officeName: "Registrar Office",
     requestList: [],
@@ -87,17 +100,14 @@ export const useRequestStore = create<RequestStore>((set) => ({
   availableDocuments: documents,
   availablePayments: payment,
 
-  // ✅ Default form data
+  // ✅ Default form data (simplified)
   formData: {
-    role: "",
-    visitorName: "",
+    email: "",
     studentName: "",
-    studentLrnNumber: "",
+    isAlumni: null,
     studentYearLevel: "",
     studentGradeLevel: "",
     studentSection: "",
-    Requestransaction: [],
-    TotalCost: 0,
   },
 
   // ✅ Update global form data
@@ -108,19 +118,17 @@ export const useRequestStore = create<RequestStore>((set) => ({
 
   // ✅ Reset form data
   resetFormData: () =>
-    set(() => ({
+    set((state) => ({
       formData: {
-        role: "",
-        visitorName: "",
+        ...state.formData, // keep current email
         studentName: "",
-        studentLrnNumber: "",
+        isAlumni: null,
         studentYearLevel: "",
         studentGradeLevel: "",
         studentSection: "",
-        Requestransaction: [],
-        TotalCost: 0,
       },
     })),
+
 
   // 📄 Document controls
   setAvailableDocuments: (docs) => set({ availableDocuments: docs }),
@@ -219,3 +227,34 @@ export const useRequestStore = create<RequestStore>((set) => ({
       },
     })),
 }));
+
+// 🔄 Fetch remote data
+(async function fetchAndSetRemoteData() {
+  try {
+    const docsResp = await getDocuments();
+    const docs =
+      Array.isArray(docsResp) ? docsResp :
+      Array.isArray((docsResp as any).data) ? (docsResp as any).data :
+      Array.isArray((docsResp as any).documents) ? (docsResp as any).documents :
+      documents;
+    useRequestStore.setState({ availableDocuments: docs });
+    console.log("Fetched documents:", docs);
+  } catch (err: any) {
+    console.warn("getDocuments failed, using local documents:", err?.message || err);
+    useRequestStore.setState({ availableDocuments: documents });
+  }
+
+  try {
+    const paysResp = await getPayments();
+    const pays =
+      Array.isArray(paysResp) ? paysResp :
+      Array.isArray((paysResp as any).data) ? (paysResp as any).data :
+      Array.isArray((paysResp as any).payments) ? (paysResp as any).payments :
+      payment;
+    useRequestStore.setState({ availablePayments: pays });
+    console.log("Fetched payments:", pays);
+  } catch (err: any) {
+    console.warn("getPayments failed, using local payments:", err?.message || err);
+    useRequestStore.setState({ availablePayments: payment });
+  }
+})();

@@ -1,3 +1,5 @@
+import { NavigatorScreenParams } from "@react-navigation/native";
+
 export type RootStackParamList = {
     App: undefined;
     Auth: undefined;
@@ -24,9 +26,8 @@ export type AppStackParamList = {
 
 export type AppTabsParamList = {
   HomeStack: undefined;
-  RequestStack: undefined;
+  RequestStack: NavigatorScreenParams<RequestStackParamList>;
   ProfileStack: undefined;
-  
 };
 
 export type ProfileStackParamList = {
@@ -41,4 +42,5 @@ export type HomeStackParamList = {
 
 export type RequestStackParamList = {
   Request: undefined;
+  Transaction: { transaction: any };
 };
