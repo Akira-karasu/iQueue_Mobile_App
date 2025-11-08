@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { useAuth } from "@/src/context/authContext";
 import { getCurrentRequestTransactions } from "@/src/services/OfficeService";
 import TransactionCard from "@/src/components/cards/TransactionCard";
@@ -9,7 +9,7 @@ export default function CurrentTransaction({ refreshTrigger }: { refreshTrigger:
   const email = getUserEmail();
   const [fullData, setFullData] = React.useState<{ users: UserData[] }>({ users: [] });
   const [loading, setLoading] = React.useState(true);
-
+  const [showAll, setShowAll] = React.useState(false); // 👈 NEW STATE
 
   React.useEffect(() => {
     async function fetchCurrentTransactions() {
@@ -50,20 +50,29 @@ export default function CurrentTransaction({ refreshTrigger }: { refreshTrigger:
     );
   }
 
+  // ✅ Use slice to control number of rendered items
+  const displayedData = showAll ? fullData.users : fullData.users.slice(0, 3);
+
   return (
     <View style={styles.containerList}>
+      <Text style={styles.title}>Current Transaction</Text>
+
       <FlatList
-        data={fullData.users}
+        data={displayedData}
         keyExtractor={(item, index) => `${item.personalInfo.email}-${index}`}
         renderItem={renderItem}
-        ListHeaderComponent={<Text style={styles.title}>Current Transaction</Text>}
         ListEmptyComponent={<Text style={styles.emptyText}>No transactions found</Text>}
         showsVerticalScrollIndicator={false}
-        initialNumToRender={5}
-        windowSize={8}
-        maxToRenderPerBatch={8}
-        removeClippedSubviews
       />
+
+      {/* ✅ Show button only if more than 3 items */}
+      {fullData.users.length > 3 && (
+        <TouchableOpacity onPress={() => setShowAll(!showAll)} style={styles.button}>
+          <Text style={styles.buttonText}>
+            {showAll ? "Show Less" : "Show All"}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -74,4 +83,14 @@ const styles = StyleSheet.create({
   containerList: { padding: 20, marginTop: 20 },
   title: { fontSize: 18, fontWeight: "800", color: "#1EBA60", marginBottom: 10 },
   emptyText: { textAlign: "center", padding: 20, color: "#666" },
+  button: {
+    marginTop: 10,
+    padding: 12,
+    backgroundColor: "#ffffffff",
+    borderWidth: 1,
+    borderColor: "#1EBA60",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  buttonText: { color: "#1EBA60", fontWeight: "700", fontSize: 14 },
 });

@@ -9,6 +9,8 @@ export default function RequestTransaction() {
   const { params } = useRoute<TransactionRouteProp>();
   const { transaction } = params;
 
+  console.log(transaction);
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.contentContainer}>
@@ -28,6 +30,21 @@ export default function RequestTransaction() {
           <Text style={styles.label}>School Year:</Text>
           <Text style={styles.value}>{transaction.personalInfo.schoolYear}</Text>
         </View>
+
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>
+            Request Transactions:
+          </Text>
+        </View>
+
+          <Text style={styles.value}>
+            {transaction.transactions.map((req, index) => (
+              <Text key={index}>
+                {req.transactionDetails} | {req.fee} X {req.copies} = {(req.fee * req.copies) === 0 ? req.fee : (req.fee * req.copies)},{"\n"}
+              </Text>
+            ))}
+          </Text>
+
       </View>
     </SafeAreaView>
   );
