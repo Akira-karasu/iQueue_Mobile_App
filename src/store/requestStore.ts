@@ -31,17 +31,17 @@ export interface RegistrarRequestList {
   totalCost: number;
 }
 
+// ✅ Updated FormData type
 export interface FormData {
-  LrnNumber: string;
   email: string;
-  firstName: string;
-  middleInitial: string;
-  lastName: string;
+  Lrn: string;
+  FirstName: string;
+  MiddleInitial: string;
+  LastName: String;
   isAlumni: boolean | null;
   studentYearLevel: string;
   studentGradeLevel: string;
   studentSection: string;
-  id_Picture: string;
 }
 
 interface RequestStore {
@@ -52,16 +52,20 @@ interface RequestStore {
 
   setEmailFromToken: (email: string) => void;
 
+  // 🧠 Global Form Data
   formData: FormData;
-  setFormData: (updates: Partial<FormData>) => void;
+  setFormData: (updater: ((prev: FormData) => FormData) | Partial<FormData>) => void;
   resetFormData: () => void;
 
+  // 📄 Document handling
   setAvailableDocuments: (docs: typeof documents) => void;
   removeDocumentFromDropdown: (documentName: string) => void;
   resetDocuments: () => void;
 
+  // 💵 Payment handling
   setAvailablePayments: (docs: typeof payment) => void;
 
+  // 🏛 Registrar list management
   setRegistrarRequestList: (
     updater: (state: RegistrarRequestList) => Partial<RegistrarRequestList>
   ) => void;
@@ -69,14 +73,20 @@ interface RequestStore {
   removeRegistrarRequestItem: (documentName: string) => void;
   clearRegistrarRequestList: () => void;
 
+  // 💵 Accounting list management
   addAccountingItem: (item: AccountingItem) => void;
   removeAccountingItem: (paymentName: string) => void;
   clearAccountingList: () => void;
+  
 }
 
 export const useRequestStore = create<RequestStore>((set) => ({
+
   setEmailFromToken: (email: string) =>
-    set((state) => ({ formData: { ...state.formData, email } })),
+  set((state) => ({
+    formData: { ...state.formData, email },
+  })),
+
 
   RegistrarRequestList: {
     officeName: "Registrar Office",
@@ -93,43 +103,46 @@ export const useRequestStore = create<RequestStore>((set) => ({
   availableDocuments: documents,
   availablePayments: payment,
 
+  // ✅ Default form data (simplified)
   formData: {
-    LrnNumber: "",
     email: "",
-    firstName: "",
-    middleInitial: "",
-    lastName: "",
+    Lrn: "",
+    FirstName: "",
+    MiddleInitial: "",
+    LastName: "",
     isAlumni: null,
     studentYearLevel: "",
     studentGradeLevel: "",
     studentSection: "",
-    id_Picture: "",
   },
 
-  // ✅ Partial update style
+  // ✅ Update global form data
   setFormData: (updater) =>
     set((state) => ({
-      formData: typeof updater === "function"
+      formData: typeof updater === 'function' 
         ? updater(state.formData)
-        : { ...state.formData, ...updater },
+        : { ...state.formData, ...updater }
     })),
 
+
+  // ✅ Reset form data
   resetFormData: () =>
-    set(() => ({
+    set((state) => ({
       formData: {
-        LrnNumber: "",
-        email: "",
-        firstName: "",
-        middleInitial: "",
-        lastName: "",
+        email: state.formData.email, // keep current email
+        Lrn: "",
+        FirstName: "",
+        MiddleInitial: "",
+        LastName: "",
         isAlumni: null,
         studentYearLevel: "",
         studentGradeLevel: "",
         studentSection: "",
-        id_Picture: "",
       },
     })),
 
+
+  // 📄 Document controls
   setAvailableDocuments: (docs) => set({ availableDocuments: docs }),
   removeDocumentFromDropdown: (documentName) =>
     set((state) => ({
@@ -139,18 +152,29 @@ export const useRequestStore = create<RequestStore>((set) => ({
     })),
   resetDocuments: () => set({ availableDocuments: documents }),
 
+  // 💵 Payment controls
   setAvailablePayments: (docs) => set({ availablePayments: docs }),
 
+  // 🏛 Registrar request list logic
   setRegistrarRequestList: (updater) =>
     set((state) => ({
-      RegistrarRequestList: { ...state.RegistrarRequestList, ...updater(state.RegistrarRequestList) },
+      RegistrarRequestList: {
+        ...state.RegistrarRequestList,
+        ...updater(state.RegistrarRequestList),
+      },
     })),
 
   addRegistrarRequestItem: (item) =>
     set((state) => {
       const updatedList = [item, ...state.RegistrarRequestList.requestList];
       const totalCost = updatedList.reduce((sum, doc) => sum + doc.Total, 0);
-      return { RegistrarRequestList: { ...state.RegistrarRequestList, requestList: updatedList, totalCost } };
+      return {
+        RegistrarRequestList: {
+          ...state.RegistrarRequestList,
+          requestList: updatedList,
+          totalCost,
+        },
+      };
     }),
 
   removeRegistrarRequestItem: (documentName) =>
@@ -159,19 +183,36 @@ export const useRequestStore = create<RequestStore>((set) => ({
         (doc) => doc.DocumentName !== documentName
       );
       const totalCost = updatedList.reduce((sum, doc) => sum + doc.Total, 0);
-      return { RegistrarRequestList: { ...state.RegistrarRequestList, requestList: updatedList, totalCost } };
+      return {
+        RegistrarRequestList: {
+          ...state.RegistrarRequestList,
+          requestList: updatedList,
+          totalCost,
+        },
+      };
     }),
 
   clearRegistrarRequestList: () =>
     set(() => ({
-      RegistrarRequestList: { officeName: "Registrar Office", requestList: [], totalCost: 0 },
+      RegistrarRequestList: {
+        officeName: "Registrar Office",
+        requestList: [],
+        totalCost: 0,
+      },
     })),
 
+  // 💵 Accounting request list logic
   addAccountingItem: (item) =>
     set((state) => {
       const updatedList = [item, ...state.AccountingRequestList.requestList];
       const totalCost = updatedList.reduce((sum, pay) => sum + pay.Price, 0);
-      return { AccountingRequestList: { ...state.AccountingRequestList, requestList: updatedList, totalCost } };
+      return {
+        AccountingRequestList: {
+          ...state.AccountingRequestList,
+          requestList: updatedList,
+          totalCost,
+        },
+      };
     }),
 
   removeAccountingItem: (paymentName) =>
@@ -180,12 +221,22 @@ export const useRequestStore = create<RequestStore>((set) => ({
         (pay) => pay.PaymentFees !== paymentName
       );
       const totalCost = updatedList.reduce((sum, pay) => sum + pay.Price, 0);
-      return { AccountingRequestList: { ...state.AccountingRequestList, requestList: updatedList, totalCost } };
+      return {
+        AccountingRequestList: {
+          ...state.AccountingRequestList,
+          requestList: updatedList,
+          totalCost,
+        },
+      };
     }),
 
   clearAccountingList: () =>
     set(() => ({
-      AccountingRequestList: { officeName: "Accounting Office", requestList: [], totalCost: 0 },
+      AccountingRequestList: {
+        officeName: "Accounting Office",
+        requestList: [],
+        totalCost: 0,
+      },
     })),
 }));
 

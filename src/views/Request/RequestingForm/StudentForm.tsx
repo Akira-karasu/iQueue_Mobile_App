@@ -1,7 +1,3 @@
-import React from 'react';
-import { View, Text } from 'react-native';
-import { useRequest } from '@/src/hooks/appTabHooks/useRequest';
-import { useRequestStore } from "@/src/store/requestStore";
 import Button from '@/src/components/buttons/Button';
 import Dropdown from '@/src/components/buttons/Dropdown';
 import { RadioButton } from '@/src/components/buttons/Radiobutton';
@@ -10,6 +6,10 @@ import Input from '@/src/components/inputs/Input';
 import StepBar from '@/src/components/layout/stepBar';
 import ViewScroller from '@/src/components/scroller/ViewScroller';
 import { options } from '@/src/constant/data';
+import { useRequest } from '@/src/hooks/appTabHooks/useRequest';
+import { useRequestStore } from "@/src/store/requestStore";
+import React from 'react';
+import { Text, View } from 'react-native';
 import styles from './RequestFormStyle';
 
 type StudentFormProps = {
@@ -27,9 +27,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ setSteps, open, step }) => {
   };
 
   const isNextDisabled =
-    !formData.firstName ||
-    !formData.lastName ||
-    !formData.LrnNumber ||
+    !formData.FirstName ||
+    !formData.LastName ||
+    !formData.Lrn ||
     !formData.studentYearLevel ||
     !formData.studentGradeLevel ||
     !formData.studentSection ||
@@ -43,8 +43,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ setSteps, open, step }) => {
           <Input
             label="LRN"
             placeholder="Enter Learner Reference Number"
-            value={formData.LrnNumber}
-            onChangeText={(value) => handleChange('LrnNumber', value)}
+            value={formData.Lrn}
+            onChangeText={(value) => handleChange('Lrn', value)}
             keyboardType="numeric"
             maxLength={12}
             required
@@ -52,22 +52,21 @@ const StudentForm: React.FC<StudentFormProps> = ({ setSteps, open, step }) => {
           <Input
             label="First Name"
             placeholder="Enter First Name"
-            value={formData.firstName}
-            onChangeText={(value) => handleChange('firstName', value)}
+            value={formData.FirstName}
+            onChangeText={(value) => handleChange('FirstName', value)}
             required
           />
           <Input
-            label="Middle Initial"
-            placeholder="Enter Middle Initial"
-            maxLength={1}
-            value={formData.middleInitial}
-            onChangeText={(value) => handleChange('middleInitial', value)}
+            label="Middle Name"
+            placeholder="Enter Middle Name"
+            value={formData.MiddleInitial}
+            onChangeText={(value) => handleChange('MiddleInitial', value)}
           />
           <Input
             label="Last Name"
             placeholder="Enter Last Name"
-            value={formData.lastName}
-            onChangeText={(value) => handleChange('lastName', value)}
+            value={formData.LastName}
+            onChangeText={(value) => handleChange('LastName', value)}
             required
           />
           <Input

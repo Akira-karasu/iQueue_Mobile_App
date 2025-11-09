@@ -1,6 +1,6 @@
 import { RequestStackParamList } from "@/src/types/navigation";
 import { RouteProp, useRoute } from "@react-navigation/native";
-import { Text, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type TransactionRouteProp = RouteProp<RequestStackParamList, "Transaction">;
@@ -18,7 +18,7 @@ export default function RequestTransaction() {
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Full Name:</Text>
-          <Text style={styles.value}>{transaction.personalInfo.fullName}</Text>
+          <Text style={styles.value}>{transaction.personalInfo.firstName}, {transaction.personalInfo.middleName}, {transaction.personalInfo.lastName}</Text>
         </View>
 
         <View style={styles.infoRow}>

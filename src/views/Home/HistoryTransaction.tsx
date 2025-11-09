@@ -8,8 +8,7 @@ export default function HistoryTransaction() {
   return (
      <View style= {styles.container}>
         <Text style={styles.title}>History Transaction</Text>
-
-        <Card  >
+        <Card >
             <Text style={{textAlign: 'center'}}> No History Transaction</Text>
         </Card>
 
