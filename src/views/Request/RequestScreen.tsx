@@ -3,16 +3,16 @@ import TransactionCost from '@/src/components/layout/TransactionCost';
 import UserBoarder from '@/src/components/layout/UserBoarder';
 import CancelTransaction from '@/src/components/modals/CancelTransaction';
 import SubmitTransaction from '@/src/components/modals/SubmidModal';
+import { useAuth } from "@/src/context/authContext";
 import { useRequest } from '@/src/hooks/appTabHooks/useRequest';
 import useModal from '@/src/hooks/componentHooks/useModal';
-import React, { useEffect } from 'react';
+import { useRequestStore } from '@/src/store/requestStore';
+import React from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import RequestForm from './RequestingForm/RequestForm';
 import StartForm from './RequestingForm/StartForm';
 import StudentForm from './RequestingForm/StudentForm';
-import { useAuth } from "@/src/context/authContext";
-import { useRequestStore } from '@/src/store/requestStore';
 
 export default function RequestScreen() {
 
@@ -78,13 +78,8 @@ export default function RequestScreen() {
             <StudentForm 
               setSteps={setSteps} 
               open={cancelModal.open} 
-              step={steps} 
-              studentName={formData.studentName}
-              studentYearLevel={formData.studentYearLevel}
-              studentGradeLevel={formData.studentGradeLevel}
-              studentSection={formData.studentSection}
-              setFormData={setFormData} 
-              handleChange={handleChange}/>
+              step={steps}
+              />
           )
         }
 

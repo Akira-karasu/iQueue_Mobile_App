@@ -4,95 +4,100 @@ import { RadioButton } from '@/src/components/buttons/Radiobutton';
 import Card from '@/src/components/cards/Card';
 import Input from '@/src/components/inputs/Input';
 import StepBar from '@/src/components/layout/stepBar';
+import ViewScroller from '@/src/components/scroller/ViewScroller';
 import { options } from '@/src/constant/data';
 import { useRequest } from '@/src/hooks/appTabHooks/useRequest';
+import { useRequestStore } from "@/src/store/requestStore";
 import React from 'react';
 import { Text, View } from 'react-native';
 import styles from './RequestFormStyle';
-import { useRequestStore } from "@/src/store/requestStore";
 
 type StudentFormProps = {
   setSteps: React.Dispatch<React.SetStateAction<number>>;
   open: () => void;
   step: number;
-  studentName: string;
-  studentLrnNumber: string;
-  studentYearLevel: string;
-  studentGradeLevel: string;
-  studentSection: string;
-  setFormData: React.Dispatch<React.SetStateAction<any>>;
-  handleChange: (key: string, value: any) => void;
 };
 
-function StudentForm({
-  setSteps,
-  open,
-  step,
-  studentName,
-  studentLrnNumber,
-  studentYearLevel,
-  studentGradeLevel,
-  studentSection,
-  handleChange,
-}: StudentFormProps) {
-  const { DataYearLevel, DataGradeLevel, selectedOption, setSelectedOption } = useRequest();
-  const { formData } = useRequestStore();
+const StudentForm: React.FC<StudentFormProps> = ({ setSteps, open, step }) => {
+  const { DataYearLevel, DataGradeLevel } = useRequest();
+  const { formData, setFormData } = useRequestStore();
+
+  const handleChange = <K extends keyof typeof formData>(key: K, value: typeof formData[K]) => {
+    setFormData({ [key]: value });
+  };
+
+  const isNextDisabled =
+    !formData.FirstName ||
+    !formData.LastName ||
+    !formData.Lrn ||
+    !formData.studentYearLevel ||
+    !formData.studentGradeLevel ||
+    !formData.studentSection ||
+    formData.isAlumni === null;
 
   return (
-    <>
+    <ViewScroller>
       <StepBar title="Fill your information" display={false} />
       <View style={styles.mainContainer}>
         <Card padding={25}>
           <Input
-            label="Full Name"
-            placeholder="Enter Full Name"
-            value={studentName}
-            onChangeText={(value) => handleChange('studentName', value)}
-            required
-          />
-
-          {/* <Input
             label="LRN"
             placeholder="Enter Learner Reference Number"
-            value={studentLrnNumber}
-            onChangeText={(value) => handleChange('studentLrnNumber', value)}
+            value={formData.Lrn}
+            onChangeText={(value) => handleChange('Lrn', value)}
             keyboardType="numeric"
             maxLength={12}
             required
-          /> */}
-
+          />
+          <Input
+            label="First Name"
+            placeholder="Enter First Name"
+            value={formData.FirstName}
+            onChangeText={(value) => handleChange('FirstName', value)}
+            required
+          />
+          <Input
+            label="Middle Name"
+            placeholder="Enter Middle Name"
+            value={formData.MiddleInitial}
+            onChangeText={(value) => handleChange('MiddleInitial', value)}
+          />
+          <Input
+            label="Last Name"
+            placeholder="Enter Last Name"
+            value={formData.LastName}
+            onChangeText={(value) => handleChange('LastName', value)}
+            required
+          />
           <Input
             label="Section"
             placeholder="Enter Student Section"
-            value={studentSection}
+            value={formData.studentSection}
             onChangeText={(value) => handleChange('studentSection', value)}
             required
           />
 
           <Dropdown
-            selectedValue={studentYearLevel}
-            onSelect={(value) => {
-              handleChange('studentYearLevel', value);
-            }}
+            selectedValue={formData.studentYearLevel}
+            onSelect={(value) => handleChange('studentYearLevel', value)}
             data={DataYearLevel}
-            label='Select school year level'
-            title='School Year Level'
-            required={true}
+            label="Select school year level"
+            title="School Year Level"
+            required
           />
 
           <Dropdown
-            selectedValue={studentGradeLevel}
-            title='Grade Level'
-            onSelect={(value) => {
-              handleChange('studentGradeLevel', value);
-            }}
+            selectedValue={formData.studentGradeLevel}
+            onSelect={(value) => handleChange('studentGradeLevel', value)}
             data={DataGradeLevel}
-            label='Select grade level'
-            required={true}
+            label="Select grade level"
+            title="Grade Level"
+            required
           />
+
           <Text>Alumni student?</Text>
           <View style={styles.radioButtonContainer}>
-            {options.map((option: { label: string; value: string | number | boolean }) => (
+            {options.map((option) => (
               <RadioButton
                 key={option.value}
                 label={option.label}
@@ -100,10 +105,9 @@ function StudentForm({
                 selected={formData.isAlumni === option.value}
                 onSelect={(value) => handleChange('isAlumni', value)}
               />
-
             ))}
           </View>
-            
+          
           <View style={styles.buttonContainer}>
             <Button
               title="Cancel"
@@ -113,12 +117,18 @@ function StudentForm({
               fontSize={18}
               onPress={open}
             />
-            <Button title="Next" fontSize={18} width="45%" onPress={() => setSteps(2)} disabled={studentName === '' || studentYearLevel === '' || studentGradeLevel === '' || studentSection === '' || formData.isAlumni === null} />
+            <Button
+              title="Next"
+              fontSize={18}
+              width="45%"
+              onPress={() => setSteps(2)}
+              disabled={isNextDisabled}
+            />
           </View>
         </Card>
       </View>
-    </>
+    </ViewScroller>
   );
-}
+};
 
 export default React.memo(StudentForm);

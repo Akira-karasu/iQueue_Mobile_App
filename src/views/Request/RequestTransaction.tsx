@@ -1,6 +1,6 @@
 import { RequestStackParamList } from "@/src/types/navigation";
 import { RouteProp, useRoute } from "@react-navigation/native";
-import { Text, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type TransactionRouteProp = RouteProp<RequestStackParamList, "Transaction">;
@@ -9,6 +9,8 @@ export default function RequestTransaction() {
   const { params } = useRoute<TransactionRouteProp>();
   const { transaction } = params;
 
+  console.log(transaction);
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.contentContainer}>
@@ -16,7 +18,7 @@ export default function RequestTransaction() {
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Full Name:</Text>
-          <Text style={styles.value}>{transaction.personalInfo.fullName}</Text>
+          <Text style={styles.value}>{transaction.personalInfo.firstName}, {transaction.personalInfo.middleName}, {transaction.personalInfo.lastName}</Text>
         </View>
 
         <View style={styles.infoRow}>
@@ -28,6 +30,21 @@ export default function RequestTransaction() {
           <Text style={styles.label}>School Year:</Text>
           <Text style={styles.value}>{transaction.personalInfo.schoolYear}</Text>
         </View>
+
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>
+            Request Transactions:
+          </Text>
+        </View>
+
+          <Text style={styles.value}>
+            {transaction.transactions.map((req, index) => (
+              <Text key={index}>
+                {req.transactionDetails} | {req.fee} X {req.copies} = {(req.fee * req.copies) === 0 ? req.fee : (req.fee * req.copies)},{"\n"}
+              </Text>
+            ))}
+          </Text>
+
       </View>
     </SafeAreaView>
   );

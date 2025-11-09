@@ -1,11 +1,11 @@
 import { useRequestStore } from "@/src/store/requestStore";
 import { AppTabsParamList, RequestStackParamList } from "@/src/types/navigation";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
 import { grades, roles, section, yearLevels } from "../../constant/data";
 import { submitRequestTransaction } from "../../services/OfficeService";
-import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 
 
 type RequestScreenNavigationProp = NativeStackNavigationProp<
@@ -115,7 +115,6 @@ const removePayment = (paymentName: string) => {
         }
       });
 
-      // ❌ Remove deselected
       AccountingRequestList.requestList.forEach((item) => {
         if (!selectedIds.includes(item.PaymentFees)) {
           removeAccountingItem(item.PaymentFees);
@@ -186,7 +185,10 @@ const handleDebug = React.useCallback(() => {
   console.log(
     "🧾 Form Data Debug:",
     "\nEmail:", formData.email,
-    "\nStudent Name:", formData.studentName,
+    "\nLrn:", formData.Lrn,
+    "\nFirstname:", formData.FirstName,
+    "\nMiddleInitial:", formData.MiddleInitial,
+    "\nLastname:", formData.LastName,
     "\nSection:", formData.studentSection,
     "\nYear Level:", formData.studentYearLevel,
     "\nGrade Level:", formData.studentGradeLevel,

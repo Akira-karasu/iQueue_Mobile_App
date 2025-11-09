@@ -34,7 +34,10 @@ export interface RegistrarRequestList {
 // ✅ Updated FormData type
 export interface FormData {
   email: string;
-  studentName: string;
+  Lrn: string;
+  FirstName: string;
+  MiddleInitial: string;
+  LastName: String;
   isAlumni: boolean | null;
   studentYearLevel: string;
   studentGradeLevel: string;
@@ -51,7 +54,7 @@ interface RequestStore {
 
   // 🧠 Global Form Data
   formData: FormData;
-  setFormData: (updater: (prev: FormData) => FormData) => void;
+  setFormData: (updater: ((prev: FormData) => FormData) | Partial<FormData>) => void;
   resetFormData: () => void;
 
   // 📄 Document handling
@@ -103,7 +106,10 @@ export const useRequestStore = create<RequestStore>((set) => ({
   // ✅ Default form data (simplified)
   formData: {
     email: "",
-    studentName: "",
+    Lrn: "",
+    FirstName: "",
+    MiddleInitial: "",
+    LastName: "",
     isAlumni: null,
     studentYearLevel: "",
     studentGradeLevel: "",
@@ -113,15 +119,21 @@ export const useRequestStore = create<RequestStore>((set) => ({
   // ✅ Update global form data
   setFormData: (updater) =>
     set((state) => ({
-      formData: updater(state.formData),
+      formData: typeof updater === 'function' 
+        ? updater(state.formData)
+        : { ...state.formData, ...updater }
     })),
+
 
   // ✅ Reset form data
   resetFormData: () =>
     set((state) => ({
       formData: {
-        ...state.formData, // keep current email
-        studentName: "",
+        email: state.formData.email, // keep current email
+        Lrn: "",
+        FirstName: "",
+        MiddleInitial: "",
+        LastName: "",
         isAlumni: null,
         studentYearLevel: "",
         studentGradeLevel: "",

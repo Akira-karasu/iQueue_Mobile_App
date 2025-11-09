@@ -7,6 +7,7 @@ import RootNavigator from './navigations/RootNavigator';
 export default function App() {
 
   return (
+    
     <AuthProvider>
       <SafeAreaProvider>
         <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }} edges={['bottom']}>
