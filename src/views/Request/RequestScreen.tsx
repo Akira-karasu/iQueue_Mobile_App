@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import RequestForm from './RequestingForm/RequestForm';
 import StartForm from './RequestingForm/StartForm';
 import StudentForm from './RequestingForm/StudentForm';
+import UploadID from './RequestingForm/UploadID';
 
 export default function RequestScreen() {
 
@@ -83,6 +84,12 @@ export default function RequestScreen() {
           )
         }
 
+        {
+          steps === 2 && (
+            <UploadID setSteps={setSteps} steps={steps} />
+          )
+        }
+
         {/* {
           steps === 2 && formData.role === "Alumni" && (
             <AlumniForm 
@@ -117,7 +124,7 @@ export default function RequestScreen() {
         } */}
 
       {
-        steps === 2 && (
+        steps === 3 && (
           <>
             <RequestForm 
               setSteps={setSteps} 

@@ -31,7 +31,7 @@ export interface RegistrarRequestList {
   totalCost: number;
 }
 
-// ✅ Updated FormData type
+// add here
 export interface FormData {
   email: string;
   Lrn: string;
@@ -42,6 +42,7 @@ export interface FormData {
   studentYearLevel: string;
   studentGradeLevel: string;
   studentSection: string;
+  pictureID: string;
 }
 
 interface RequestStore {
@@ -103,7 +104,7 @@ export const useRequestStore = create<RequestStore>((set) => ({
   availableDocuments: documents,
   availablePayments: payment,
 
-  // ✅ Default form data (simplified)
+  // add here
   formData: {
     email: "",
     Lrn: "",
@@ -114,6 +115,7 @@ export const useRequestStore = create<RequestStore>((set) => ({
     studentYearLevel: "",
     studentGradeLevel: "",
     studentSection: "",
+    pictureID: "",
   },
 
   // ✅ Update global form data
@@ -125,7 +127,7 @@ export const useRequestStore = create<RequestStore>((set) => ({
     })),
 
 
-  // ✅ Reset form data
+  // add here
   resetFormData: () =>
     set((state) => ({
       formData: {
@@ -138,6 +140,7 @@ export const useRequestStore = create<RequestStore>((set) => ({
         studentYearLevel: "",
         studentGradeLevel: "",
         studentSection: "",
+        pictureID: ""
       },
     })),
 

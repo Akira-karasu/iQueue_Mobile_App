@@ -55,6 +55,8 @@ export function useRequest() {
     TabNavigation.navigate("HomeStack");
   }, [TabNavigation]);
 
+  const [error, setError] = React.useState<string>("");
+  
 
   const RequestTransactionList = {};
 
@@ -193,6 +195,7 @@ const handleDebug = React.useCallback(() => {
     "\nYear Level:", formData.studentYearLevel,
     "\nGrade Level:", formData.studentGradeLevel,
     "\nIs Alumni:", formData.isAlumni,
+    "\nPicture:", formData.pictureID
   );
   }, [formData]);
 
@@ -283,5 +286,6 @@ const handleDebug = React.useCallback(() => {
     totalPaymentCost,
     selectedOption,
     setSelectedOption,
+    error, setError
   };
 }

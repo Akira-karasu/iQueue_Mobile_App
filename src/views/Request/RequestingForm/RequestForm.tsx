@@ -41,7 +41,7 @@ function RequestForm ({setSteps, step} : RequestFormProps) {
                 end={2}
                 title="Request Transaction"
                 display={true}
-                onBack={() => setSteps(1)}
+                onBack={() => setSteps(2)}
             />
             <View style={styles.mainContainer}>
             <Card padding={25}>
