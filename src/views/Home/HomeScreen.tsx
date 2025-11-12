@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useState } from "react";
 import { FlatList, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
 
 import ImageHeading from "@/src/components/layout/ImageHeading";
 import UserBoarder from "@/src/components/layout/UserBoarder";
@@ -10,15 +10,15 @@ import EventAndAnnounce from "./EventAndAnnounce";
 import HistoryTransaction from "./HistoryTransaction";
 
 export default function HomeScreen() {
-  const isFocused = useIsFocused();
   const [refreshFlag, setRefreshFlag] = useState(0);
 
-  useEffect(() => {
-    if (isFocused) {
+  // ✅ Fires every time screen gains focus
+  useFocusEffect(
+    useCallback(() => {
       console.log("🏠 HomeScreen FOCUSED → Refreshing Data");
       setRefreshFlag(prev => prev + 1);
-    }
-  }, [isFocused]);
+    }, [])
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#19AF5B" }} edges={["top"]}>

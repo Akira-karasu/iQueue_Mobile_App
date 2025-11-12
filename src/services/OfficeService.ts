@@ -74,29 +74,23 @@ export async function submitRequestTransaction(
   }
 }
 
-
-// export async function getPersonalInfo(email: string) {
-//   try {
-//     const response = await api.get("office-service/GetOnePersonalInfo", { params: { email } });
-//     return response.data;
-//   } catch (error: any) {
-//     throw new Error(error.response?.data?.message || 'Personal information unavailable');
-//   }
-// }
-
-export async function getCurrentRequestTransactions(email: string) {
+export async function getCurrentRequestTransactions(email: string, bustCache?: boolean) {
     try {
+        console.log('📡 Fetching transactions for:', email);
+        
         const response = await api.get('office-service/FindAllUsersWithTransactions', {
-            params: { email }
+            params: { 
+                email,
+                _t: Date.now() // ✅ Always bust cache
+            }
         });
         
-        console.log('API Response:', response.data);
+        console.log('📦 API Response received');
+        
         return response.data;
         
     } catch (error: any) {
-        console.error('Transaction fetch error:', error);
+        console.error('❌ Transaction fetch error:', error);
         throw new Error(error.response?.data?.message || 'Failed to fetch transactions');
     }
 }
-
-

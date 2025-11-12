@@ -1,4 +1,3 @@
-// src/components/TransactionCard.tsx
 import Card from "@/src/components/cards/Card";
 import { RequestStackParamList } from "@/src/types/navigation";
 import { useNavigation } from "@react-navigation/native";

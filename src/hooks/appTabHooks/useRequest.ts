@@ -55,6 +55,7 @@ export function useRequest() {
     TabNavigation.navigate("HomeStack");
   }, [TabNavigation]);
 
+
   const [error, setError] = React.useState<string>("");
   
 
@@ -145,8 +146,11 @@ const removePayment = (paymentName: string) => {
     [setFormData]
   );  
 
-  const handleSubmitTransaction = React.useCallback(
-    (close: () => void) => {
+const handleSubmitTransaction = React.useCallback(
+  async (close: () => void) => {
+    try {
+      console.log('🚀 Starting transaction submission...');
+      
       const updatedTransactions = {};
 
       if (RegistrarRequestList.requestList.length > 0) {
@@ -162,26 +166,34 @@ const removePayment = (paymentName: string) => {
         RequestTransaction: updatedTransactions,
       }));
 
+      close();
+
+      console.log('📤 Submitting transaction...');
+      const response = await submitRequestTransaction(formData, updatedTransactions);
+      console.log('✅ Transaction submitted successfully:', response);
+
+      console.log('🏠 Navigating to HomeStack...');
       GoToHomeStack();
 
-      submitRequestTransaction(formData, updatedTransactions);
-  
       clearRegistrarRequestList();
       clearAccountingList();
-      close();
       handleResetTransaction(close);
-      
-    },
-    [
-      formData,
-      RegistrarRequestList,
-      AccountingRequestList,
-      clearRegistrarRequestList,
-      clearAccountingList,
-      GoToRequestTransaction,
-      setFormData,
-    ]
-  );
+
+    } catch (error) {
+      console.error("❌ Transaction submission failed:", error);
+    }
+  },
+  [
+    formData,
+    RegistrarRequestList,
+    AccountingRequestList,
+    clearRegistrarRequestList,
+    clearAccountingList,
+    GoToHomeStack,
+    setFormData,
+    submitRequestTransaction,
+  ]
+);
 
 const handleDebug = React.useCallback(() => {
   console.log(

@@ -1,8 +1,8 @@
-import React, { useCallback } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import TransactionCard from "@/src/components/cards/TransactionCard";
 import { useAuth } from "@/src/context/authContext";
 import { getCurrentRequestTransactions } from "@/src/services/OfficeService";
-import TransactionCard from "@/src/components/cards/TransactionCard";
+import React, { useCallback } from "react";
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function CurrentTransaction({ refreshTrigger }: { refreshTrigger: number }) {
   const { getUserEmail } = useAuth();
@@ -11,31 +11,37 @@ export default function CurrentTransaction({ refreshTrigger }: { refreshTrigger:
   const [loading, setLoading] = React.useState(true);
   const [showAll, setShowAll] = React.useState(false); // 👈 NEW STATE
 
-  React.useEffect(() => {
-    async function fetchCurrentTransactions() {
-      try {
-        setLoading(true);
+React.useEffect(() => {
+  console.log('🔄 CurrentTransaction effect triggered, refreshTrigger:', refreshTrigger);
+  
+  async function fetchCurrentTransactions() {
+    try {
+      setLoading(true);
+      setFullData({ users: [] }); // Clear old data
 
-        if (email) {
-          const data = await getCurrentRequestTransactions(email);
+      if (email) {
+        console.log('👤 Fetching for user:', email);
+        const data = await getCurrentRequestTransactions(email, true);
 
-          const sortedUsers = data.users.sort(
-            (a: UserData, b: UserData) =>
-              new Date(b.personalInfo.createdAt).getTime() -
-              new Date(a.personalInfo.createdAt).getTime()
-          );
+        console.log('📥 Raw data received:', data.users.length, 'users');
 
-          setFullData({ users: sortedUsers });
-        }
-      } catch (error) {
-        console.error("Failed to fetch transactions:", error);
-      } finally {
-        setTimeout(() => setLoading(false), 1000);
+        const sortedUsers = data.users.sort(
+          (a: UserData, b: UserData) =>
+            new Date(b.personalInfo.createdAt).getTime() -
+            new Date(a.personalInfo.createdAt).getTime()
+        );
+        
+        setFullData({ users: sortedUsers });
       }
+    } catch (error) {
+      console.error("❌ Failed to fetch transactions:", error);
+    } finally {
+      setTimeout(() => setLoading(false), 1000);
     }
+  }
 
-    fetchCurrentTransactions();
-  }, [email, refreshTrigger]);
+  fetchCurrentTransactions();
+}, [email, refreshTrigger]);
 
   const renderItem = useCallback(({ item }: { item: UserData }) => {
     return <TransactionCard item={item} />;

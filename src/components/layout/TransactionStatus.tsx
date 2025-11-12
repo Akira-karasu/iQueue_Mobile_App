@@ -1,0 +1,128 @@
+import React from "react";
+import { Image, StyleSheet, Text, View } from "react-native";
+import Button from "../buttons/Button";
+import IconButton from "../buttons/IconButton";
+
+interface TransactionStatusProps {
+  status: string | null;
+  goback: () => void;
+}
+
+export default function TransactionStatus({ status, goback }: TransactionStatusProps) {
+  if (!status) {
+    return (
+      <View style={styles.container}>
+        <Text style={[styles.infoText, { color: "#666" }]}>
+          Status not available
+        </Text>
+      </View>
+    );
+  }
+
+  // Define status configurations for scalability
+  const statusConfig: Record<
+    string,
+    { title: string; image: any; infoText: string; button?: { title: string } }
+  > = {
+    pending: {
+      title: "Verifying Transaction",
+      image: require("@/assets/transactionIcons/verification.png"),
+      infoText:
+        "We are checking your information and request. You’ll be notified once it is verified.",
+    },
+    processing: {
+      title: "Payment Appointment",
+      image: require("@/assets/transactionIcons/appointment.png"),
+      infoText:
+        "Your request is now verified. Please schedule your payment for your transactions.",
+      button: { title: "Set Appointment" },
+    },
+    // completed: {
+    //   title: "Transaction Completed",
+    //   image: require("@/assets/transactionIcons/completed.png"),
+    //   infoText: "Your transaction has been successfully completed.",
+    // },
+    // failed: {
+    //   title: "Transaction Failed",
+    //   image: require("@/assets/transactionIcons/failed.png"),
+    //   infoText: "Something went wrong with your transaction. Please try again.",
+    // },
+  };
+
+  const currentStatus = statusConfig[status.toLowerCase()] || null;
+
+  if (!currentStatus) {
+    return (
+      <View style={styles.container}>
+        <Text style={[styles.infoText, { color: "#666" }]}>
+          Unknown status
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <IconButton
+          onPress={goback}
+          icon={require("../../../assets/icons/ArrowBack.png")}
+        />
+        <Text style={styles.title}>{currentStatus.title}</Text>
+        <View style={{ width: 30 }} />
+      </View>
+
+      {/* Status Image */}
+      <Image
+        source={currentStatus.image}
+        resizeMode="contain"
+        style={styles.statusImage}
+      />
+
+      {/* Info Text */}
+      <Text style={styles.infoText}>{currentStatus.infoText}</Text>
+
+      {/* Optional Button */}
+      {currentStatus.button && (
+        <Button title={currentStatus.button.title} fontSize={18} />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#19AF5B",
+    textAlign: "center",
+    marginLeft: 10,
+  },
+  statusImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 20,
+  },
+  infoText: {
+    fontSize: 14,
+    color: "#888",
+    textAlign: "center",
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+});
