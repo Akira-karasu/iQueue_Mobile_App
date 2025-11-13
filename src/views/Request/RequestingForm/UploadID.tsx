@@ -6,7 +6,7 @@ import { useRequest } from "@/src/hooks/appTabHooks/useRequest";
 import { useRequestStore } from "@/src/store/requestStore";
 import * as ImagePicker from "expo-image-picker";
 import React from "react";
-import { Image, Text, View } from "react-native";
+import { Alert, Image, Linking, Text, View } from "react-native";
 
 export type RequestFormProps = {
   setSteps: React.Dispatch<React.SetStateAction<number>>;
@@ -25,21 +25,75 @@ export default function UploadID({ setSteps, steps }: RequestFormProps) {
 
 
 const selectImage = async () => {
-  const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  try {
+    // Request permission to access media library
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-  if (!permissionResult.granted) {
-    alert("Permission to access camera roll is required!");
-    return;
-  }
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Required",
+        "We need access to your photos to let you select an image.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Open Settings", 
+            onPress: () => Linking.openSettings() 
+          },
+        ]
+      );
+      return;
+    }
 
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    quality: 1,
-  });
+    // Ask user to choose between camera or gallery
+    Alert.alert(
+      "Select Image Source",
+      "Choose where you want to upload your ID from:",
+      [
+        {
+          text: "Camera",
+          onPress: async () => {
+            const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+            if (!cameraPermission.granted) {
+              Alert.alert(
+                "Permission Denied",
+                "Camera access is required to take a photo."
+              );
+              return;
+            }
 
-  if (!result.canceled) {
-    handleChange("pictureID", result.assets[0].uri); // ✅ correct way
-    setError(""); // clear error
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              quality: 1,
+              allowsEditing: true,
+            });
+
+            if (!result.canceled) {
+              handleChange("pictureID", result.assets[0].uri);
+              setError("");
+            }
+          },
+        },
+        {
+          text: "Gallery",
+          onPress: async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              quality: 1,
+              allowsEditing: true,
+            });
+
+            if (!result.canceled) {
+              handleChange("pictureID", result.assets[0].uri);
+              setError("");
+            }
+          },
+        },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  } catch (error) {
+    console.error("Image selection error:", error);
+    Alert.alert("Error", "Something went wrong while selecting the image.");
   }
 };
 
