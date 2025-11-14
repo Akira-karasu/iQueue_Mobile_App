@@ -70,6 +70,8 @@ const getUserEmail = () => {
   }
 };
 
+
+
 const login = (newToken: string) => {
   saveToken(newToken);
 };

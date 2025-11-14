@@ -1,47 +1,63 @@
 import TransactionCard from "@/src/components/cards/TransactionCard";
 import { useAuth } from "@/src/context/authContext";
-import { getCurrentRequestTransactions } from "@/src/services/OfficeService";
-import React, { useCallback } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { getTransactionRecordSocket } from "@/src/services/socket";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-export default function CurrentTransaction({ refreshTrigger }: { refreshTrigger: number }) {
+export default function CurrentTransaction() {
   const { getUserEmail } = useAuth();
   const email = getUserEmail();
-  const [fullData, setFullData] = React.useState<{ users: UserData[] }>({ users: [] });
-  const [loading, setLoading] = React.useState(true);
-  const [showAll, setShowAll] = React.useState(false); // 👈 NEW STATE
 
-React.useEffect(() => {
-  console.log('🔄 CurrentTransaction effect triggered, refreshTrigger:', refreshTrigger);
-  
-  async function fetchCurrentTransactions() {
-    try {
-      setLoading(true);
-      setFullData({ users: [] }); // Clear old data
+  const [fullData, setFullData] = useState<{ users: UserData[] }>({ users: [] });
+  const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
-      if (email) {
-        console.log('👤 Fetching for user:', email);
-        const data = await getCurrentRequestTransactions(email, true);
+  useEffect(() => {
+    if (!email) return;
 
-        console.log('📥 Raw data received:', data.users.length, 'users');
+    const socket = getTransactionRecordSocket();
 
-        const sortedUsers = data.users.sort(
-          (a: UserData, b: UserData) =>
-            new Date(b.personalInfo.createdAt).getTime() -
-            new Date(a.personalInfo.createdAt).getTime()
-        );
-        
-        setFullData({ users: sortedUsers });
-      }
-    } catch (error) {
-      console.error("❌ Failed to fetch transactions:", error);
-    } finally {
-      setTimeout(() => setLoading(false), 1000);
-    }
-  }
+    console.log("🔌 Connecting to /transactionRecord...");
 
-  fetchCurrentTransactions();
-}, [email, refreshTrigger]);
+    /** ⬇ INITIAL LOAD */
+    socket.on("connect", () => {
+      console.log("✅ Connected to transactionRecord socket");
+      socket.emit("currentTransactionRecord", { email }); // request user-specific data
+    });
+
+    /** ⬇ RECEIVE INITIAL + BROADCASTED UPDATES */
+    const handleRecords = (records: any) => {
+      console.log("📥 Received currentTransactionRecord:", records);
+
+      const users: UserData[] = Array.isArray(records?.users)
+        ? records.users
+        : [];
+
+      const sortedUsers = users.sort(
+        (a, b) =>
+          new Date(b.personalInfo.createdAt).getTime() -
+          new Date(a.personalInfo.createdAt).getTime()
+      );
+
+      setFullData({ users: sortedUsers });
+      setLoading(false);
+    };
+
+    /** ⬇ Listen for real-time updates from backend broadcasts */
+    socket.on("currentTransactionRecord", handleRecords);
+
+    return () => {
+      socket.off("connect");
+      socket.off("currentTransactionRecord", handleRecords);
+    };
+  }, [email]);
 
   const renderItem = useCallback(({ item }: { item: UserData }) => {
     return <TransactionCard item={item} />;
@@ -56,11 +72,10 @@ React.useEffect(() => {
     );
   }
 
-  // ✅ Use slice to control number of rendered items
   const displayedData = showAll ? fullData.users : fullData.users.slice(0, 3);
 
   return (
-    <View style={styles.containerList}>
+    <View style={[styles.containerList, { flexShrink: 1 }]}>
       <Text style={styles.title}>Current Transaction</Text>
 
       <FlatList
@@ -69,11 +84,14 @@ React.useEffect(() => {
         renderItem={renderItem}
         ListEmptyComponent={<Text style={styles.emptyText}>No transactions found</Text>}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={false}
       />
 
-      {/* ✅ Show button only if more than 3 items */}
       {fullData.users.length > 3 && (
-        <TouchableOpacity onPress={() => setShowAll(!showAll)} style={styles.button}>
+        <TouchableOpacity
+          onPress={() => setShowAll(!showAll)}
+          style={styles.button}
+        >
           <Text style={styles.buttonText}>
             {showAll ? "Show Less" : "Show All"}
           </Text>

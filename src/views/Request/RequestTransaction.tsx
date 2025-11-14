@@ -12,15 +12,19 @@ export default function RequestTransaction() {
   const { params } = useRoute<TransactionRouteProp>();
   const { transaction } = params;
 
-  const { GoToHomeStack, groupedTransactions, totalCost, paymentStatus } =
+  const { GoToHomeStack, groupedTransactions, totalCost } =
     useRequestTransaction(transaction.transactions);
 
   const requestDocuments = groupedTransactions["Request Document"] || [];
   const requestPayments = groupedTransactions["Payment"] || [];
 
   // Combine firstName, middleName, lastName into Full Name
-  const fullName = [transaction.personalInfo.firstName, transaction.personalInfo.middleName, transaction.personalInfo.lastName]
-    .filter(n => n?.trim() !== "")
+  const fullName = [
+    transaction.personalInfo.firstName,
+    transaction.personalInfo.middleName,
+    transaction.personalInfo.lastName,
+  ]
+    .filter((n) => n?.trim() !== "")
     .join(" ");
 
   // Format createdAt
@@ -35,22 +39,29 @@ export default function RequestTransaction() {
       })
     : null;
 
+  // ----------------------------------------------------------
+  // ✅ PAYMENT STATUS LOGIC (Fully Paid / Not Fully Paid)
+  // ----------------------------------------------------------
+
+  const allPaid = [...requestDocuments, ...requestPayments].every(
+    (item) => item.paymentStatus?.toLowerCase() === "paid"
+  );
+
+  const summaryPaymentStatus = allPaid ? "Fully Paid" : "Not Fully Paid";
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          {/* <TouchableOpacity onPress={goBack}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity> */}
           <Text style={styles.headerTitle}>Request Transaction Details</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
-
-          <TransactionStatus status={transaction.personalInfo.status || null} goback={GoToHomeStack}/>
-
+          <TransactionStatus
+            status={transaction.personalInfo.status || null}
+            goback={GoToHomeStack}
+          />
 
           {/* Personal Info Card */}
           <Card>
@@ -58,14 +69,10 @@ export default function RequestTransaction() {
 
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Transaction Id</Text>
-              <Text style={styles.infoValue}>{transaction.personalInfo.id || null}</Text>
+              <Text style={styles.infoValue}>
+                {transaction.personalInfo.id || null}
+              </Text>
             </View>
-
-            {/* <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Status</Text>
-              <Text style={styles.infoValue}>{transaction.personalInfo.status || null}</Text>
-            </View> */}
-
 
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Full Name</Text>
@@ -74,38 +81,45 @@ export default function RequestTransaction() {
 
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Email</Text>
-              <Text style={styles.infoValue}>{transaction.personalInfo.email || null}</Text>
+              <Text style={styles.infoValue}>
+                {transaction.personalInfo.email || null}
+              </Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Grade</Text>
-              <Text style={styles.infoValue}>{transaction.personalInfo.grade || null}</Text>
+              <Text style={styles.infoValue}>
+                {transaction.personalInfo.grade || null}
+              </Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Section</Text>
-              <Text style={styles.infoValue}>{transaction.personalInfo.section || null}</Text>
+              <Text style={styles.infoValue}>
+                {transaction.personalInfo.section || null}
+              </Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>School Year</Text>
-              <Text style={styles.infoValue}>{transaction.personalInfo.schoolYear || null}</Text>
+              <Text style={styles.infoValue}>
+                {transaction.personalInfo.schoolYear || null}
+              </Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Student LRN</Text>
-              <Text style={styles.infoValue}>{transaction.personalInfo.studentLrn || null}</Text>
+              <Text style={styles.infoValue}>
+                {transaction.personalInfo.studentLrn || null}
+              </Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Alumni</Text>
-              <Text style={styles.infoValue}>{transaction.personalInfo.isAlumni ? "Yes" : "No"}</Text>
+              <Text style={styles.infoValue}>
+                {transaction.personalInfo.isAlumni ? "Yes" : "No"}
+              </Text>
             </View>
-
-            {/* <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Transaction Code</Text>
-              <Text style={styles.infoValue}>{transaction.personalInfo.transactionCode || "not available"}</Text>
-            </View> */}
 
             <View style={styles.infoRow}>
               <Text style={styles.infoKey}>Created At</Text>
@@ -113,22 +127,24 @@ export default function RequestTransaction() {
             </View>
           </Card>
 
-                    {/* Summary */}
-        <Card style={styles.summaryCard}>
-          <Text style={styles.sectionTitle}>Transaction Summary</Text>
-          <Text style={styles.total}>Total: ₱{totalCost.toFixed(2)}</Text>
-          <Text style={styles.status}>
-            Payment Status:{" "}
-            <Text
-              style={[
-                styles.statusValue,
-                { color: paymentStatus.toLowerCase() === "paid" ? "green" : "red" },
-              ]}
-            >
-              {paymentStatus}
+          {/* Summary */}
+          <Card style={styles.summaryCard}>
+            <Text style={styles.sectionTitle}>Transaction Summary</Text>
+
+            <Text style={styles.total}>Total: ₱{totalCost.toFixed(2)}</Text>
+
+            <Text style={styles.status}>
+              Payment Status:{" "}
+              <Text
+                style={[
+                  styles.statusValue,
+                  { color: allPaid ? "green" : "red" },
+                ]}
+              >
+                {summaryPaymentStatus}
+              </Text>
             </Text>
-          </Text>
-        </Card>
+          </Card>
 
           {/* Request Documents */}
           {requestDocuments.length > 0 && (
@@ -141,10 +157,16 @@ export default function RequestTransaction() {
                       {req.transactionDetails || null}
                     </Text>
                     <Text style={styles.smallText}>Copies: {req.copies || 1}</Text>
-                    <Text style={styles.smallText}>Status: {req.status || null}</Text>
-                    <Text style={styles.smallText}>Payment: {req.paymentStatus || null}</Text>
+                    <Text style={styles.smallText}>
+                      Status: {req.status || null}
+                    </Text>
+                    <Text style={styles.smallText}>
+                      Payment: {req.paymentStatus || null}
+                    </Text>
                   </View>
-                  <Text style={styles.transactionFee}>₱{req.fee || "0.00"}</Text>
+                  <Text style={styles.transactionFee}>
+                    ₱{req.fee || "0.00"}
+                  </Text>
                 </View>
               ))}
             </Card>
@@ -157,16 +179,23 @@ export default function RequestTransaction() {
               {requestPayments.map((req, i) => (
                 <View key={i} style={styles.transactionRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.transactionItem}>{req.transactionDetails || null}</Text>
-                    <Text style={styles.smallText}>Status: {req.status || null}</Text>
-                    <Text style={styles.smallText}>Payment: {req.paymentStatus || null}</Text>
+                    <Text style={styles.transactionItem}>
+                      {req.transactionDetails || null}
+                    </Text>
+                    <Text style={styles.smallText}>
+                      Status: {req.status || null}
+                    </Text>
+                    <Text style={styles.smallText}>
+                      Payment: {req.paymentStatus || null}
+                    </Text>
                   </View>
-                  <Text style={styles.transactionFee}>₱{req.fee || "0.00"}</Text>
+                  <Text style={styles.transactionFee}>
+                    ₱{req.fee || "0.00"}
+                  </Text>
                 </View>
               ))}
             </Card>
           )}
-
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -183,7 +212,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 10,
   },
-  backText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700", marginLeft: 10 },
   content: { padding: 20, gap: 15 },
   sectionTitle: { fontWeight: "700", marginBottom: 8, color: "#19AF5B" },
@@ -196,7 +224,7 @@ const styles = StyleSheet.create({
   transactionFee: { color: "#222", fontWeight: "600" },
   total: { fontWeight: "700", fontSize: 16, color: "#222", marginBottom: 8 },
   status: { fontWeight: "600", marginTop: 3, color: "#333" },
-  statusValue: { color: "#19AF5B", fontWeight: "700" },
+  statusValue: { fontWeight: "700" },
   transactionsCard: { marginTop: 10 },
   summaryCard: { marginTop: 10 },
 });
