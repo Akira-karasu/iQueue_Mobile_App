@@ -12,50 +12,94 @@ import {
 } from "react-native";
 
 export default function CurrentTransaction() {
-  const { getUserEmail } = useAuth();
-  const email = getUserEmail();
+  type UserData = {
+    personalInfo: {
+      id: string;
+      email: string;
+      createdAt: string;
+    };
+  };
+
+  const { getUser } = useAuth();
+  const email = getUser().email;
+  const id = getUser().id;
 
   const [fullData, setFullData] = useState<{ users: UserData[] }>({ users: [] });
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null); // <-- New state
 
   useEffect(() => {
     if (!email) return;
 
-    const socket = getTransactionRecordSocket();
+    const socket = getTransactionRecordSocket(email);
 
     console.log("🔌 Connecting to /transactionRecord...");
 
-    /** ⬇ INITIAL LOAD */
     socket.on("connect", () => {
       console.log("✅ Connected to transactionRecord socket");
-      socket.emit("currentTransactionRecord", { email }); // request user-specific data
+      setConnectionError(null); // Clear previous errors
+      try {
+        socket.emit("currentTransactionRecord", { email });
+      } catch (err) {
+        console.error("⚠️ Failed to emit currentTransactionRecord:", err);
+        setConnectionError("Failed to request transaction records.");
+        setLoading(false);
+      }
     });
 
-    /** ⬇ RECEIVE INITIAL + BROADCASTED UPDATES */
     const handleRecords = (records: any) => {
-      console.log("📥 Received currentTransactionRecord:", records);
+      try {
+        if (!records?.users || !Array.isArray(records.users)) {
+          console.warn("⚠️ Received invalid data format:", records);
+          setFullData({ users: [] });
+          setLoading(false);
+          return;
+        }
 
-      const users: UserData[] = Array.isArray(records?.users)
-        ? records.users
-        : [];
+        const sortedUsers = records.users.sort(
+          (a: UserData, b: UserData) =>
+            new Date(b.personalInfo.createdAt).getTime() -
+            new Date(a.personalInfo.createdAt).getTime()
+        );
 
-      const sortedUsers = users.sort(
-        (a, b) =>
-          new Date(b.personalInfo.createdAt).getTime() -
-          new Date(a.personalInfo.createdAt).getTime()
-      );
-
-      setFullData({ users: sortedUsers });
-      setLoading(false);
+        setFullData({ users: sortedUsers });
+        setLoading(false);
+      } catch (err) {
+        console.error("⚠️ Error processing transaction records:", err);
+        setFullData({ users: [] });
+        setLoading(false);
+      }
     };
 
-    /** ⬇ Listen for real-time updates from backend broadcasts */
     socket.on("currentTransactionRecord", handleRecords);
+
+    // <-- Error handling
+    socket.on("connect_error", (err) => {
+      console.error("❌ Socket connection error:", err);
+      setConnectionError("Unable to connect. Please check your internet.");
+      setLoading(false);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.warn("⚠️ Socket disconnected:", reason);
+      if (!connectionError) {
+        setConnectionError("Connection lost. Trying to reconnect...");
+      }
+    });
+
+    socket.on("error", (err) => {
+      console.error("❌ Socket error:", err);
+      setConnectionError("An unexpected error occurred.");
+      setLoading(false);
+    });
 
     return () => {
       socket.off("connect");
       socket.off("currentTransactionRecord", handleRecords);
+      socket.off("connect_error");
+      socket.off("disconnect");
+      socket.off("error");
     };
   }, [email]);
 
@@ -68,6 +112,16 @@ export default function CurrentTransaction() {
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#1EBA60" />
         <Text style={styles.loadingText}>Loading transactions...</Text>
+      </View>
+    );
+  }
+
+  if (connectionError) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: "red", textAlign: "center", padding: 20 }}>
+          {connectionError}
+        </Text>
       </View>
     );
   }
@@ -100,6 +154,7 @@ export default function CurrentTransaction() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 40 },

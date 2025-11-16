@@ -1,16 +1,20 @@
 import { io, Socket } from 'socket.io-client';
 
-const BASE_URL = 'http://192.168.1.13:3000';
+const BASE_URL = 'http://192.168.1.18:3000';
 let transactionRecordSocket: Socket | undefined;
 let requestTransactionProcessSocket: Socket | undefined;
 let notificationSocket: Socket | undefined;
 
-export function getTransactionRecordSocket(): Socket {
+export function getTransactionRecordSocket(email: string): Socket {
   if (!transactionRecordSocket) {
-    transactionRecordSocket = io(`${BASE_URL}/transactionRecord`, { transports: ['websocket'] });
+    transactionRecordSocket = io(`${BASE_URL}/transactionRecord`, {
+      transports: ["websocket"],
+      query: { email }, // <-- CRUCIAL
+    });
   }
   return transactionRecordSocket;
 }
+
 
 export function getRequestTransactionProcessSocket(): Socket {
   if (!requestTransactionProcessSocket) {

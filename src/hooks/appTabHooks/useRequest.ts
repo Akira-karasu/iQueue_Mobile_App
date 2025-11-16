@@ -15,10 +15,6 @@ type RequestScreenNavigationProp = NativeStackNavigationProp<
 
 type HomeTabNavigationProp = BottomTabNavigationProp<AppTabsParamList, "HomeStack">;
 
-
-
-
-
 type OfficeType = "" | "Registrar Office" | "Accounting Office";
 
 export function useRequest() {
@@ -55,10 +51,8 @@ export function useRequest() {
     TabNavigation.navigate("HomeStack");
   }, [TabNavigation]);
 
-
   const [error, setError] = React.useState<string>("");
   
-
   const RequestTransactionList = {};
 
   const [DocumentSelect, setDocumentSelect] = React.useState<any>(null);

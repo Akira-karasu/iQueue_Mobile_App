@@ -31,8 +31,10 @@ export default function RequestScreen() {
     const cancelModal = useModal();
     const submitModal = useModal();
 
-    const { getUserEmail } = useAuth();
-    const email = getUserEmail();
+    const { getUser } = useAuth();
+    const email = getUser().email;
+    const id = getUser().id;
+
     const setFormData = useRequestStore((state) => state.setFormData);
 
     

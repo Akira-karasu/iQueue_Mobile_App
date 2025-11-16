@@ -16,7 +16,7 @@ type AuthContextType = {
   logout: () => void;
   saveToken: (newToken: string | null) => void;
   isTokenExpired: () => Promise<boolean>;
-  getUserEmail: () => string | null;
+  getUser: () => { id: string | null; email: string | null };
 };
 
 // ✅ Props for the provider
@@ -60,16 +60,18 @@ const saveToken = (newToken: string | null) => {
   }
 };
 
-const getUserEmail = () => {
-  if (!token) return null;
+const getUser = () => {
+  if (!token) return { id: null, email: null };
   try {
     const decoded: any = jwtDecode(token);
-    return decoded.email;
+    return {
+      id: decoded.id ?? null,
+      email: decoded.email ?? null,
+    };
   } catch {
-    return null;
+    return { id: null, email: null };
   }
 };
-
 
 
 const login = (newToken: string) => {
@@ -112,7 +114,7 @@ const logout = async () => {
         logout,
         saveToken,
         isTokenExpired,
-        getUserEmail,
+        getUser,
       }}
     >
       {children}
