@@ -37,7 +37,10 @@ const StudentForm: React.FC<StudentFormProps> = ({ setSteps, open, step }) => {
 
   return (
     <ViewScroller>
-      <StepBar title="Fill your information" display={false} />
+        <StepBar title="Fill your information"
+        displayArrowLeft={false}
+        displayArrowRight={false}
+      />
       <View style={styles.mainContainer}>
         <Card padding={25}>
           <Input

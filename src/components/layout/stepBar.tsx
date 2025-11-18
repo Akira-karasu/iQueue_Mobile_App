@@ -2,32 +2,58 @@ import { StyleSheet, Text, View } from "react-native";
 import IconButton from "../buttons/IconButton";
 
 type StepBarProps = {
-  display?: boolean;  // optional (default = true)
-  onBack?: () => void;  // optional callback
-  start?: number;  // optional (default = 1)
-  end?: number;  // optional (default = 1)
-  title?: string;
+  displayArrowLeft?: boolean;  // Show/hide left arrow
+  displayArrowRight?: boolean;  // Show/hide right arrow
+  onLeftPress?: () => void;  // Left arrow callback
+  onRightPress?: () => void;  // Right arrow callback
+  start?: number;  // Current step
+  end?: number;  // Total steps
+  title?: string;  // Title text
 };
 
 export default function StepBar({
-  display = true,
-  onBack,
+  displayArrowLeft = true,
+  displayArrowRight = true,
+  onLeftPress,
+  onRightPress,
   start = 1,
   end = 1,
   title = "Title",
 }: StepBarProps) {
   return (
     <View style={styles.container}>
-      {display && (
+      {/* Left Arrow */}
+      {displayArrowLeft ? (
         <IconButton
-          onPress={() => onBack && onBack()}
+          onPress={() => onLeftPress && onLeftPress()}
           icon={require("../../../assets/icons/ArrowBack.png")}
-          style={styles.iconButton}
+          style={styles.arrow}
         />
+      ) : (
+        <View style={styles.arrow} />
       )}
-      <View style={[styles.titleHeader, { width: display ? "85%" : "100%" }]}>
+
+      {/* Title in Center */}
+      <View style={styles.titleHeader}>
         <Text style={styles.title}>{title}</Text>
+        {start && end && (
+          <Text style={styles.stepCounter}>
+            {start}/{end}
+          </Text>
+        )}
       </View>
+
+      {/* Right Arrow */}
+      {displayArrowRight ? (
+        <IconButton
+          onPress={() => onRightPress && onRightPress()}
+          icon={require("../../../assets/icons/ArrowBack.png")}
+          style={[styles.arrow, styles.arrowRight]}
+          resizeMode="contain"
+        />
+      ) : (
+        <View style={styles.arrow} />
+      )}
     </View>
   );
 }
@@ -37,12 +63,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     flexDirection: "row",
+    justifyContent: "space-between",
   },
-  iconButton: {
-    marginBottom: 10,
+  arrow: {
+    width: 40,
+    height: 40,
+  },
+  arrowRight: {
+    transform: [{ scaleX: -1 }],  // Flip arrow to face right
   },
   titleHeader: {
     alignItems: "center",
+    marginHorizontal: 10,
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -50,10 +83,10 @@ const styles = StyleSheet.create({
     color: "#14AD59",
     textAlign: "center",
   },
-  subtitle: {
-    fontSize: 15,
-    fontWeight: "400",
-    marginBottom: 10,
-    textAlign: "center",
+  stepCounter: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 5,
+    fontWeight: "500",
   },
 });

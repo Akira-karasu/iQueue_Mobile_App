@@ -111,8 +111,9 @@ const selectImage = async () => {
     <ViewScroller>
       <StepBar
         title="Upload Verified ID picture"
-        display={true}
-        onBack={() => setSteps(1)}
+        displayArrowLeft={true}
+        displayArrowRight={false}
+        onLeftPress={() => setSteps(1)}
       />
 
       <Card style={{ marginHorizontal: 10, padding: 10 }}>

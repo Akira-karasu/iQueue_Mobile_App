@@ -40,8 +40,9 @@ function RequestForm ({setSteps, step} : RequestFormProps) {
                 start={step}
                 end={2}
                 title="Request Transaction"
-                display={true}
-                onBack={() => setSteps(2)}
+                displayArrowLeft={true}
+                displayArrowRight={false}
+                onLeftPress={() => setSteps(2)}
             />
             <View style={styles.mainContainer}>
             <Card padding={25}>
@@ -85,8 +86,9 @@ function RequestForm ({setSteps, step} : RequestFormProps) {
                 start={step}
                 end={3}
                 title="Registrar Office"
-                display={true}
-                onBack={() => setOffice('')}
+                displayArrowLeft={false}
+                displayArrowRight={true}
+                onRightPress={() => setOffice('')}
             />
             <View style={styles.mainContainer}>
                 <RegistrarOfficeForm />
@@ -100,8 +102,9 @@ function RequestForm ({setSteps, step} : RequestFormProps) {
                 start={step}
                 end={3}
                 title="Accounting Office"
-                display={true}
-                onBack={() => setOffice('')}
+                displayArrowLeft={false}
+                displayArrowRight={true}
+                onRightPress={() => setOffice('')}
             />
             <AccountingOfficeForm title='Request Payment Fees' />
             </>

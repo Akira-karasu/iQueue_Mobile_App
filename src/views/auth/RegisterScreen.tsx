@@ -6,7 +6,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import Activity from "@/src/components/buttons/activity";
 import Button from "@/src/components/buttons/Button";
-import PasswordPolicy from "@/src/components/checker/PasswordPolicy";
 import Input from "@/src/components/inputs/Input";
 import IconBar from "@/src/components/layout/IconBar";
 import LogoTitle from "@/src/components/layout/LogoTitle";
@@ -74,17 +73,11 @@ export default function RegisterScreen() {
               editable={!isLoading}
               required
             />
-            <View style={styles.ActiveContainer}>
-              <Text>Already have an account? </Text>
-              <Activity label="Login" onPress={goToLogin} />
-            </View>
           </View>
 
           {validationMessage ? (
-            <Text style={styles.ValidationText}>{validationMessage}</Text>
+            <Text style={styles.ValidationText}>{validationMessage || " "}</Text>
           ) : null}
-
-          <PasswordPolicy password={password} confirmPassword={confirmPassword} />
 
           <View style={styles.TermsContainer}>
               <View>
@@ -101,9 +94,12 @@ export default function RegisterScreen() {
             title={"Verify & Sign Up"}
             onPress={() => handleSignUp()}
             style={{ width: "100%" }}
-            disabled={!hasAcceptedTerms}
           />
 
+          <View style={styles.ActiveContainer}>
+              <Text>Already have an account? </Text>
+              <Activity label="Login" onPress={goToLogin} />
+            </View>
         </View>
 
         {/* Terms & Conditions modal */}
