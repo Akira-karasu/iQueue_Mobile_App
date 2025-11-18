@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
-const BASE_URL = 'http://192.168.1.18:3000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.iqueue.online';
+
 let transactionRecordSocket: Socket | undefined;
 let requestTransactionProcessSocket: Socket | undefined;
 let notificationSocket: Socket | undefined;
