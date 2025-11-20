@@ -95,8 +95,11 @@ export default function RequestTransaction() {
       item.paymentStatus?.toLowerCase() === "unpaid"
   );
 
-  // ✅ Check if should show button - only if there are pending or ready-for-release documents and not all cancelled+unpaid
-  const shouldShowButton = hasPendingOrReadyDocuments && !allCancelledAndUnpaid;
+  // ✅ Check if personal info status is pending
+  const isPersonalInfoPending = transaction.personalInfo.status?.toLowerCase() === "pending";
+
+  // ✅ Check if should show button - only if there are pending or ready-for-release documents and not all cancelled+unpaid and personal info status is not pending
+  const shouldShowButton = hasPendingOrReadyDocuments && !allCancelledAndUnpaid && !isPersonalInfoPending;
 
 
   let summaryPaymentStatus: string;
@@ -138,7 +141,7 @@ export default function RequestTransaction() {
               requestDocuments={requestDocuments}
               goback={GoToHomeStack}
             />
-            {/* ✅ Button only shows if there are pending or ready-for-release documents */}
+            {/* ✅ Button only shows if there are pending or ready-for-release documents and personal info status is not pending */}
             {shouldShowButton && (
               <View style={styles.buttonContainer}>
                 <Button
