@@ -86,6 +86,13 @@ export default function RequestTransaction() {
     (doc) => doc.status?.toLowerCase() === "ready-for-release"
   );
 
+  // ✅ Check if there are pending documents that are unpaid
+  const hasPendingAndUnpaidDocuments = requestDocuments.some(
+    (doc) => 
+      doc.status?.toLowerCase() === "pending" && 
+      doc.paymentStatus?.toLowerCase() === "unpaid"
+  );
+
   // ✅ Check if there are pending documents that are paid
   const hasPendingAndPaidDocuments = requestDocuments.some(
     (doc) => 
@@ -103,9 +110,16 @@ export default function RequestTransaction() {
   // ✅ Check if personal info status is pending
   const isPersonalInfoPending = transaction.personalInfo.status?.toLowerCase() === "pending";
 
-  // ✅ Check if should show button - only if there are ready-for-release documents and not all cancelled+unpaid and personal info status is not pending
-  // Also hide button if pending documents are paid
-  const shouldShowButton = hasReadyForReleaseDocuments && !allCancelledAndUnpaid && !isPersonalInfoPending && !hasPendingAndPaidDocuments;
+  // ✅ Check if should show button - show if:
+  // (ready-for-release documents OR pending+unpaid documents) AND
+  // NOT all cancelled+unpaid AND
+  // NOT personal info pending AND
+  // NOT pending+paid documents
+  const shouldShowButton = 
+    (hasReadyForReleaseDocuments || hasPendingAndUnpaidDocuments) && 
+    !allCancelledAndUnpaid && 
+    !isPersonalInfoPending && 
+    !hasPendingAndPaidDocuments;
 
 
   let summaryPaymentStatus: string;
@@ -147,7 +161,7 @@ export default function RequestTransaction() {
               requestDocuments={requestDocuments}
               goback={GoToHomeStack}
             />
-            {/* ✅ Button only shows if there are ready-for-release documents and not pending+paid and personal info status is not pending */}
+            {/* ✅ Button shows if ready-for-release or pending+unpaid (but not pending+paid) */}
             {shouldShowButton && (
               <View style={styles.buttonContainer}>
                 <Button
