@@ -18,25 +18,28 @@ export default function QueueScreen() {
     navigation.goBack();
   };
 
-  // ✅ Filter only ready-for-release documents
+  // ✅ Filter only ready-for-release documents (exclude cancelled)
   const readyForReleaseDocuments = queueData.transactions.filter(
     (transaction: any) => 
       transaction.transactionType === "Request Document" && 
-      transaction.status === "ready-for-release"
+      transaction.status?.toLowerCase() === "ready-for-release" &&
+      transaction.status?.toLowerCase() !== "cancelled"
   );
 
-  // ✅ Filter unpaid request documents
+  // ✅ Filter unpaid request documents (exclude cancelled)
   const unpaidDocuments = queueData.transactions.filter(
     (transaction: any) => 
       transaction.transactionType === "Request Document" && 
-      transaction.paymentStatus?.toLowerCase() === "unpaid"
+      transaction.paymentStatus?.toLowerCase() === "unpaid" &&
+      transaction.status?.toLowerCase() !== "cancelled"
   );
 
-  // ✅ Filter unpaid request payments
+  // ✅ Filter unpaid request payments (exclude cancelled)
   const unpaidPayments = queueData.transactions.filter(
     (transaction: any) => 
       transaction.transactionType === "Payment" && 
-      transaction.paymentStatus?.toLowerCase() === "unpaid"
+      transaction.paymentStatus?.toLowerCase() === "unpaid" &&
+      transaction.status?.toLowerCase() !== "cancelled"
   );
 
   // ✅ Check if status is processing and has unpaid documents or payments

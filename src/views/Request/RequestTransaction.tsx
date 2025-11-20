@@ -53,9 +53,17 @@ export default function RequestTransaction() {
     (item) => item.status?.toLowerCase() !== "cancelled"
   );
   
-  // ✅ Calculate total cost excluding cancelled items
+  // ✅ Calculate total cost excluding cancelled items (with copies multiplier for documents)
   const totalCost = nonCancelledItems.reduce(
-    (sum, item) => sum + (parseFloat(item.fee) || 0),
+    (sum, item) => {
+      const baseFee = parseFloat(item.fee) || 0;
+      const copies = item.copies || 1;
+      // Multiply fee by copies for request documents, use base fee for payments
+      const itemTotal = item.transactionType === "Request Document" 
+        ? baseFee * copies 
+        : baseFee;
+      return sum + itemTotal;
+    },
     0
   );
   
@@ -73,10 +81,12 @@ export default function RequestTransaction() {
     (item) => item.paymentStatus?.toLowerCase() === "paid"
   );
 
-  // ✅ Separate conditions for button visibility
-  const hasReadyForRelease = readyForReleaseCount > 0;
-  const isProcessing = transaction.personalInfo.status?.toLowerCase() === "processing";
-  const isNotFullyPaid = !allDocumentsAndPaymentsPaid;
+  // ✅ Check if there are pending or ready-for-release documents
+  const hasPendingOrReadyDocuments = requestDocuments.some(
+    (doc) => 
+      doc.status?.toLowerCase() === "pending" || 
+      doc.status?.toLowerCase() === "ready-for-release"
+  );
 
   // ✅ Check if all items are cancelled and unpaid
   const allCancelledAndUnpaid = allItems.every(
@@ -85,12 +95,8 @@ export default function RequestTransaction() {
       item.paymentStatus?.toLowerCase() === "unpaid"
   );
 
-  const hasCancelledItems = allItems.some(
-    (item) => item.status?.toLowerCase() === "cancelled"
-  );
-
-  // ✅ Check if should hide button due to cancelled unpaid items
-  const shouldHideButton = allCancelledAndUnpaid || hasCancelledItems;
+  // ✅ Check if should show button - only if there are pending or ready-for-release documents and not all cancelled+unpaid
+  const shouldShowButton = hasPendingOrReadyDocuments && !allCancelledAndUnpaid;
 
 
   let summaryPaymentStatus: string;
@@ -107,6 +113,15 @@ export default function RequestTransaction() {
     summaryStatusColor = "#ff6f00";
   }
 
+  // ✅ Helper function to calculate item total
+  const calculateItemTotal = (item: any) => {
+    const baseFee = parseFloat(item.fee) || 0;
+    const copies = item.copies || 1;
+    return item.transactionType === "Request Document" 
+      ? baseFee * copies 
+      : baseFee;
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.container}>
@@ -120,21 +135,11 @@ export default function RequestTransaction() {
             <TransactionStatus
               status={transaction.personalInfo.status || null}
               count_readyForRelease={readyForReleaseCount}
+              requestDocuments={requestDocuments}
               goback={GoToHomeStack}
             />
-            {/* ✅ Updated conditions with cancelled unpaid check */}
-            {hasReadyForRelease && !shouldHideButton && (
-              <View style={styles.buttonContainer}>
-                <Button
-                  title="View QR code"
-                  onPress={() => {
-                    GoToQueueScreen(transaction);
-                  }}
-                />
-              </View>
-            )}
-
-            {isProcessing && isNotFullyPaid && !shouldHideButton && (
+            {/* ✅ Button only shows if there are pending or ready-for-release documents */}
+            {shouldShowButton && (
               <View style={styles.buttonContainer}>
                 <Button
                   title="View QR code"
@@ -257,9 +262,14 @@ export default function RequestTransaction() {
                       Payment: {req.paymentStatus || null}
                     </Text>
                   </View>
-                  <Text style={styles.transactionFee}>
-                    ₱{req.fee || "0.00"}
-                  </Text>
+                  <View style={styles.feeColumn}>
+                    <Text style={styles.transactionFee}>
+                      ₱{(parseFloat(req.fee) || 0).toFixed(2)} x {req.copies || 1}
+                    </Text>
+                    <Text style={[styles.transactionFee, { color: "#19AF5B", fontWeight: "700" }]}>
+                      ₱{calculateItemTotal(req).toFixed(2)}
+                    </Text>
+                  </View>
                 </View>
               ))}
             </Card>
@@ -283,7 +293,7 @@ export default function RequestTransaction() {
                     </Text>
                   </View>
                   <Text style={styles.transactionFee}>
-                    ₱{req.fee || "0.00"}
+                    ₱{(parseFloat(req.fee) || 0).toFixed(2)}
                   </Text>
                 </View>
               ))}
@@ -321,6 +331,7 @@ const styles = StyleSheet.create({
   transactionItem: { color: "#333", fontSize: 16, fontWeight: "600" },
   smallText: { fontSize: 12, color: "#666" },
   transactionFee: { color: "#222", fontWeight: "600" },
+  feeColumn: { alignItems: "flex-end", gap: 4 },
   total: { fontWeight: "700", fontSize: 16, color: "#222", marginBottom: 8 },
   status: { fontWeight: "600", marginTop: 3, color: "#333" },
   statusValue: { fontWeight: "700" },
