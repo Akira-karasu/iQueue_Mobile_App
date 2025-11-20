@@ -13,7 +13,7 @@ export default function RequestTransaction() {
   const { params } = useRoute<TransactionRouteProp>();
   const { transaction } = params;
 
-  const { GoToHomeStack, groupedTransactions, totalCost, GoToQueueScreen } =
+  const { GoToHomeStack, groupedTransactions, GoToQueueScreen } =
     useRequestTransaction(transaction.transactions);
 
   const requestDocuments = groupedTransactions["Request Document"] || [];
@@ -45,12 +45,67 @@ export default function RequestTransaction() {
       })
     : null;
 
-  // Payment Status Logic
-  const allPaid = [...requestDocuments, ...requestPayments].every(
+  // ✅ Payment Status Logic with Canceled Handling
+  const allItems = [...requestDocuments, ...requestPayments];
+  
+  // ✅ Filter out canceled items for total cost calculation
+  const nonCancelledItems = allItems.filter(
+    (item) => item.status?.toLowerCase() !== "cancelled"
+  );
+  
+  // ✅ Calculate total cost excluding cancelled items
+  const totalCost = nonCancelledItems.reduce(
+    (sum, item) => sum + (parseFloat(item.fee) || 0),
+    0
+  );
+  
+  // Check if all canceled
+  const allCancelled = allItems.every(
+    (item) => item.status?.toLowerCase() === "cancelled"
+  );
+  
+  // Check if all non-canceled items are paid
+  const allNonCancelledPaid = nonCancelledItems.length > 0 && nonCancelledItems.every(
     (item) => item.paymentStatus?.toLowerCase() === "paid"
   );
 
-  const summaryPaymentStatus = allPaid ? "Fully Paid" : "Not Fully Paid";
+  const allDocumentsAndPaymentsPaid = allItems.every(
+    (item) => item.paymentStatus?.toLowerCase() === "paid"
+  );
+
+  // ✅ Separate conditions for button visibility
+  const hasReadyForRelease = readyForReleaseCount > 0;
+  const isProcessing = transaction.personalInfo.status?.toLowerCase() === "processing";
+  const isNotFullyPaid = !allDocumentsAndPaymentsPaid;
+
+  // ✅ Check if all items are cancelled and unpaid
+  const allCancelledAndUnpaid = allItems.every(
+    (item) => 
+      item.status?.toLowerCase() === "cancelled" && 
+      item.paymentStatus?.toLowerCase() === "unpaid"
+  );
+
+  const hasCancelledItems = allItems.some(
+    (item) => item.status?.toLowerCase() === "cancelled"
+  );
+
+  // ✅ Check if should hide button due to cancelled unpaid items
+  const shouldHideButton = allCancelledAndUnpaid || hasCancelledItems;
+
+
+  let summaryPaymentStatus: string;
+  let summaryStatusColor: string;
+
+  if (allCancelled) {
+    summaryPaymentStatus = "All Canceled";
+    summaryStatusColor = "#d32f2f";
+  } else if (allNonCancelledPaid) {
+    summaryPaymentStatus = "Fully Paid";
+    summaryStatusColor = "#19AF5B";
+  } else {
+    summaryPaymentStatus = "Not Fully Paid";
+    summaryStatusColor = "#ff6f00";
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -61,11 +116,35 @@ export default function RequestTransaction() {
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
-          <TransactionStatus
-            status={transaction.personalInfo.status || null}
-            count_readyForRelease={readyForReleaseCount}
-            goback={GoToHomeStack}
-          />
+          <View>
+            <TransactionStatus
+              status={transaction.personalInfo.status || null}
+              count_readyForRelease={readyForReleaseCount}
+              goback={GoToHomeStack}
+            />
+            {/* ✅ Updated conditions with cancelled unpaid check */}
+            {hasReadyForRelease && !shouldHideButton && (
+              <View style={styles.buttonContainer}>
+                <Button
+                  title="View QR code"
+                  onPress={() => {
+                    GoToQueueScreen(transaction);
+                  }}
+                />
+              </View>
+            )}
+
+            {isProcessing && isNotFullyPaid && !shouldHideButton && (
+              <View style={styles.buttonContainer}>
+                <Button
+                  title="View QR code"
+                  onPress={() => {
+                    GoToQueueScreen(transaction);
+                  }}
+                />
+              </View>
+            )}
+          </View>
 
           {/* Personal Info Card */}
           <Card>
@@ -129,20 +208,6 @@ export default function RequestTransaction() {
               <Text style={styles.infoKey}>Created At</Text>
               <Text style={styles.infoValue}>{createdAt}</Text>
             </View>
-
-          {readyForReleaseCount > 0 && (
-            <View style={styles.buttonContainer}>
-              <Button
-                title="View QR code"
-                onPress={() => {
-                  // Add your action here
-                  GoToQueueScreen(transaction);
-                }}
-              />
-            </View>
-          )}
-
-
           </Card>
 
           {/* Summary */}
@@ -156,7 +221,7 @@ export default function RequestTransaction() {
               <Text
                 style={[
                   styles.statusValue,
-                  { color: allPaid ? "green" : "red" },
+                  { color: summaryStatusColor },
                 ]}
               >
                 {summaryPaymentStatus}
@@ -197,9 +262,6 @@ export default function RequestTransaction() {
                   </Text>
                 </View>
               ))}
-
-              
-
             </Card>
           )}
 
@@ -243,7 +305,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 10,
   },
-    buttonContainer: {
+  buttonContainer: {
     padding: 20,
     backgroundColor: "#fff",
     borderTopWidth: 1,

@@ -36,11 +36,12 @@ export default function TransactionStatus({ status, goback, count_readyForReleas
         "We are checking your information and request. You’ll be notified once it is verified.",
     },
     'processing': {
-      title: "Processing Request",
+      title: "Processing Transaction",
       image: require("@/assets/transactionIcons/processing.png"),
       infoText:
-        "Your request is now verified, request documents are being processed.",
+        "Your transaction is now verified, you can now proceed to payment for your transaction request",
     },
+    
     "ready-for-release": {
       title: "Request is now ready for release",
       image: require("@/assets/transactionIcons/readyForRelease.png"),
@@ -97,7 +98,6 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFF",
   },
   header: {
     flexDirection: "row",
