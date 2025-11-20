@@ -1,3 +1,4 @@
+import Button from "@/src/components/buttons/Button";
 import Card from "@/src/components/cards/Card";
 import TransactionStatus from "@/src/components/layout/TransactionStatus";
 import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransaction";
@@ -12,13 +13,18 @@ export default function RequestTransaction() {
   const { params } = useRoute<TransactionRouteProp>();
   const { transaction } = params;
 
-  const { GoToHomeStack, groupedTransactions, totalCost } =
+  const { GoToHomeStack, groupedTransactions, totalCost, GoToQueueScreen } =
     useRequestTransaction(transaction.transactions);
 
   const requestDocuments = groupedTransactions["Request Document"] || [];
   const requestPayments = groupedTransactions["Payment"] || [];
 
-  // Combine firstName, middleName, lastName into Full Name
+  // Count "ready-for-release" documents
+  const readyForReleaseCount = requestDocuments.filter(
+    (doc) => doc.status?.toLowerCase() === "ready-for-release"
+  ).length;
+
+  // Full Name
   const fullName = [
     transaction.personalInfo.firstName,
     transaction.personalInfo.middleName,
@@ -39,10 +45,7 @@ export default function RequestTransaction() {
       })
     : null;
 
-  // ----------------------------------------------------------
-  // ✅ PAYMENT STATUS LOGIC (Fully Paid / Not Fully Paid)
-  // ----------------------------------------------------------
-
+  // Payment Status Logic
   const allPaid = [...requestDocuments, ...requestPayments].every(
     (item) => item.paymentStatus?.toLowerCase() === "paid"
   );
@@ -60,6 +63,7 @@ export default function RequestTransaction() {
         <ScrollView contentContainerStyle={styles.content}>
           <TransactionStatus
             status={transaction.personalInfo.status || null}
+            count_readyForRelease={readyForReleaseCount}
             goback={GoToHomeStack}
           />
 
@@ -125,6 +129,20 @@ export default function RequestTransaction() {
               <Text style={styles.infoKey}>Created At</Text>
               <Text style={styles.infoValue}>{createdAt}</Text>
             </View>
+
+          {readyForReleaseCount > 0 && (
+            <View style={styles.buttonContainer}>
+              <Button
+                title="View QR code"
+                onPress={() => {
+                  // Add your action here
+                  GoToQueueScreen(transaction);
+                }}
+              />
+            </View>
+          )}
+
+
           </Card>
 
           {/* Summary */}
@@ -149,14 +167,24 @@ export default function RequestTransaction() {
           {/* Request Documents */}
           {requestDocuments.length > 0 && (
             <Card style={styles.transactionsCard}>
-              <Text style={styles.sectionTitle}>Request Documents</Text>
+              <Text style={styles.sectionTitle}>
+                Request Documents{" "}
+                {readyForReleaseCount > 0 && (
+                  <Text style={{ color: "#19AF5B" }}>
+                    ({readyForReleaseCount} ready)
+                  </Text>
+                )}
+              </Text>
+
               {requestDocuments.map((req, i) => (
                 <View key={i} style={styles.transactionRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.transactionItem}>
                       {req.transactionDetails || null}
                     </Text>
-                    <Text style={styles.smallText}>Copies: {req.copies || 1}</Text>
+                    <Text style={styles.smallText}>
+                      Copies: {req.copies || 1}
+                    </Text>
                     <Text style={styles.smallText}>
                       Status: {req.status || null}
                     </Text>
@@ -169,6 +197,9 @@ export default function RequestTransaction() {
                   </Text>
                 </View>
               ))}
+
+              
+
             </Card>
           )}
 
@@ -211,6 +242,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#19AF5B",
     paddingVertical: 15,
     paddingHorizontal: 10,
+  },
+    buttonContainer: {
+    padding: 20,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
   },
   headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700", marginLeft: 10 },
   content: { padding: 20, gap: 15 },

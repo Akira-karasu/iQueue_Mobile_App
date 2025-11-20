@@ -1,15 +1,21 @@
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import Button from "../buttons/Button";
 import IconButton from "../buttons/IconButton";
 
 interface TransactionStatusProps {
   status: string | null;
   goback: () => void;
+  count_readyForRelease?: number;
 }
 
-export default function TransactionStatus({ status, goback }: TransactionStatusProps) {
-  if (!status) {
+export default function TransactionStatus({ status, goback, count_readyForRelease }: TransactionStatusProps) {
+
+  // If there are ready-for-release documents, override status
+  const effectiveStatus = count_readyForRelease && count_readyForRelease > 0 
+    ? "ready-for-release"
+    : status;
+
+  if (!effectiveStatus) {
     return (
       <View style={styles.container}>
         <Text style={[styles.infoText, { color: "#666" }]}>
@@ -19,37 +25,35 @@ export default function TransactionStatus({ status, goback }: TransactionStatusP
     );
   }
 
-  // Define status configurations for scalability
   const statusConfig: Record<
     string,
     { title: string; image: any; infoText: string; button?: { title: string } }
   > = {
-    pending: {
+    'pending': {
       title: "Verifying Transaction",
       image: require("@/assets/transactionIcons/verification.png"),
       infoText:
         "We are checking your information and request. You’ll be notified once it is verified.",
     },
-    processing: {
-      title: "Payment Appointment",
-      image: require("@/assets/transactionIcons/appointment.png"),
+    'processing': {
+      title: "Processing Request",
+      image: require("@/assets/transactionIcons/processing.png"),
       infoText:
-        "Your request is now verified. Please schedule your payment for your transactions.",
-      button: { title: "Set Appointment" },
+        "Your request is now verified, request documents are being processed.",
     },
-    // completed: {
-    //   title: "Transaction Completed",
-    //   image: require("@/assets/transactionIcons/completed.png"),
-    //   infoText: "Your transaction has been successfully completed.",
-    // },
-    // failed: {
-    //   title: "Transaction Failed",
-    //   image: require("@/assets/transactionIcons/failed.png"),
-    //   infoText: "Something went wrong with your transaction. Please try again.",
-    // },
+    "ready-for-release": {
+      title: "Request is now ready for release",
+      image: require("@/assets/transactionIcons/readyForRelease.png"),
+      infoText: "Your requested documents are now ready for release",
+    },
+    'completed': {
+      title: "Transaction Completed",
+      image: require("@/assets/transactionIcons/completed.png"),
+      infoText: "Your transaction has been completed successfully.",
+    },
   };
 
-  const currentStatus = statusConfig[status.toLowerCase()] || null;
+  const currentStatus = statusConfig[effectiveStatus.toLowerCase()] || null;
 
   if (!currentStatus) {
     return (
@@ -82,14 +86,10 @@ export default function TransactionStatus({ status, goback }: TransactionStatusP
 
       {/* Info Text */}
       <Text style={styles.infoText}>{currentStatus.infoText}</Text>
-
-      {/* Optional Button */}
-      {currentStatus.button && (
-        <Button title={currentStatus.button.title} fontSize={18} />
-      )}
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

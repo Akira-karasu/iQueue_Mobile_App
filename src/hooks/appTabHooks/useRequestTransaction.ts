@@ -13,6 +13,13 @@ export const useRequestTransaction = (transactions: any[]) => {
       const GoToHomeStack = React.useCallback(() => {
         TabNavigation.navigate("HomeStack");
       }, [TabNavigation]);
+
+      const GoToQueueScreen = React.useCallback((queueData: any) => {
+        TabNavigation.navigate("RequestStack", {
+          screen: "Queue",
+          params: { queueData },
+        });
+      }, [TabNavigation]);
     
   // ✅ Group transactions by type
   const groupedTransactions = useMemo(() => {
@@ -49,5 +56,6 @@ export const useRequestTransaction = (transactions: any[]) => {
     groupedTransactions,
     totalCost,
     paymentStatus,
+    GoToQueueScreen,
   };
 };

@@ -27,8 +27,14 @@ export async function submitRequestTransaction(
 
     // ✅ Append all non-file fields
     Object.entries(requestPersonalInfo).forEach(([key, value]) => {
-      if (key !== 'pictureID' && value !== undefined && value !== null) {
-        formData.append(key, String(value));
+      if (key !== 'pictureID' && value !== undefined) {
+        // ✅ Handle boolean specially - send as '1' or '0'
+        if (typeof value === 'boolean') {
+          formData.append(key, value ? '1' : '0');
+        } else if (value !== null) {
+          // ✅ Only append non-null values for non-boolean fields
+          formData.append(key, String(value));
+        }
       }
     });
 
@@ -36,7 +42,6 @@ export async function submitRequestTransaction(
     if (requestPersonalInfo.pictureID) {
       let uri = requestPersonalInfo.pictureID;
 
-      // Ensure proper file URI format for Android/iOS
       if (uri.startsWith('file://')) {
         uri = uri;
       } else if (!uri.startsWith('content://')) {
@@ -57,17 +62,16 @@ export async function submitRequestTransaction(
     // ✅ Append transaction data as JSON
     formData.append('RequestTransact', JSON.stringify(requestTransaction));
 
-    // ✅ Send to NestJS endpoint
     const response = await api.post('office-service/CreateRequestInfo', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 10000, // optional: helps prevent hanging uploads
+      timeout: 10000,
     });
 
     console.log('✅ Upload successful:', response.data);
     return response.data;
 
   } catch (error: any) {
-    console.error('❌ Transaction upload failed:', error);
+    console.error('❌ Transaction submission failed:', error.response?.data || error);
     throw new Error(
       error.response?.data?.message || 'Transaction submission failed'
     );

@@ -43,4 +43,5 @@ export type HomeStackParamList = {
 export type RequestStackParamList = {
   Request: undefined;
   Transaction: { transaction: any };
+  Queue: { queueData: any };
 };
