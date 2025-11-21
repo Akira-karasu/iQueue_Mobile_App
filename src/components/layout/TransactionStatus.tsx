@@ -1,6 +1,5 @@
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import IconButton from "../buttons/IconButton";
 
 interface TransactionStatusProps {
   status: string | null;
@@ -52,6 +51,11 @@ export default function TransactionStatus({ status, goback, count_readyForReleas
       image: require("@/assets/transactionIcons/completed.png"),
       infoText: "Your transaction has been completed successfully.",
     },
+    'cancelled': {
+      title: "Transaction Cancelled",
+      image: require("@/assets/transactionIcons/cancelled.png"),
+      infoText: "Your transaction has been cancelled.",
+    },
   };
 
   const currentStatus = statusConfig[effectiveStatus.toLowerCase()] || null;
@@ -70,10 +74,10 @@ export default function TransactionStatus({ status, goback, count_readyForReleas
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <IconButton
+        {/* <IconButton
           onPress={goback}
           icon={require("../../../assets/icons/ArrowBack.png")}
-        />
+        /> */}
         <Text style={styles.title}>{currentStatus.title}</Text>
         <View style={{ width: 30 }} />
       </View>
@@ -95,14 +99,14 @@ export default function TransactionStatus({ status, goback, count_readyForReleas
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
     justifyContent: "center",
     alignItems: "center",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     width: "100%",
     marginBottom: 20,
   },
@@ -122,7 +126,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#888",
     textAlign: "center",
-    paddingHorizontal: 20,
-    marginBottom: 20,
   },
 });

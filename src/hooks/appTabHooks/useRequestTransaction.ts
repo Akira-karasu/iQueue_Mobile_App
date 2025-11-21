@@ -1,26 +1,26 @@
+import { cancelTransactionRequest } from "@/src/services/OfficeService";
 import { AppTabsParamList } from "@/src/types/navigation";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
-import React, { useMemo } from "react";
-
+import React, { useMemo, useState } from "react";
 
 type HomeTabNavigationProp = BottomTabNavigationProp<AppTabsParamList, "HomeStack">;
 
 export const useRequestTransaction = (transactions: any[]) => {
+  const TabNavigation = useNavigation<HomeTabNavigationProp>();
+  const [isCancelling, setIsCancelling] = useState(false);
 
-    const TabNavigation = useNavigation<HomeTabNavigationProp>();
+  const GoToHomeStack = React.useCallback(() => {
+    TabNavigation.navigate("HomeStack");
+  }, [TabNavigation]);
 
-      const GoToHomeStack = React.useCallback(() => {
-        TabNavigation.navigate("HomeStack");
-      }, [TabNavigation]);
+  const GoToQueueScreen = React.useCallback((queueData: any) => {
+    TabNavigation.navigate("RequestStack", {
+      screen: "Queue",
+      params: { queueData },
+    });
+  }, [TabNavigation]);
 
-      const GoToQueueScreen = React.useCallback((queueData: any) => {
-        TabNavigation.navigate("RequestStack", {
-          screen: "Queue",
-          params: { queueData },
-        });
-      }, [TabNavigation]);
-    
   // ✅ Group transactions by type
   const groupedTransactions = useMemo(() => {
     const grouped: Record<string, any[]> = {};
@@ -51,11 +51,31 @@ export const useRequestTransaction = (transactions: any[]) => {
     return "Partially Paid";
   }, [transactions]);
 
+  // ✅ Handle cancel request transaction
+  const handleCancelRequest = React.useCallback(
+    async (personalInfoId: number) => {
+      try {
+        setIsCancelling(true);
+        const result = await cancelTransactionRequest(personalInfoId);
+        console.log('✅ Cancelled:', result);
+        return result;
+      } catch (error: any) {
+        console.error('❌ Cancel error:', error);
+        throw new Error(error.message || 'Failed to cancel request');
+      } finally {
+        setIsCancelling(false);
+      }
+    },
+    []
+  );
+
   return {
     GoToHomeStack,
     groupedTransactions,
     totalCost,
     paymentStatus,
     GoToQueueScreen,
+    handleCancelRequest,
+    isCancelling,
   };
 };

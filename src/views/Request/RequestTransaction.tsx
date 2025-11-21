@@ -1,7 +1,10 @@
 import Button from "@/src/components/buttons/Button";
+import IconButton from "@/src/components/buttons/IconButton";
 import Card from "@/src/components/cards/Card";
 import TransactionStatus from "@/src/components/layout/TransactionStatus";
+import CancelRequestTransaction from "@/src/components/modals/CancelRequestTransaction";
 import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransaction";
+import useModal from "@/src/hooks/componentHooks/useModal";
 import { RequestStackParamList } from "@/src/types/navigation";
 import { RouteProp, useRoute } from "@react-navigation/native";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
@@ -13,7 +16,13 @@ export default function RequestTransaction() {
   const { params } = useRoute<TransactionRouteProp>();
   const { transaction } = params;
 
-  const { GoToHomeStack, groupedTransactions, GoToQueueScreen } =
+  const {     
+    visible,
+    open,
+    close
+  } = useModal();
+
+  const { GoToHomeStack, groupedTransactions, GoToQueueScreen} =
     useRequestTransaction(transaction.transactions);
 
   const requestDocuments = groupedTransactions["Request Document"] || [];
@@ -110,16 +119,18 @@ export default function RequestTransaction() {
   // ✅ Check if personal info status is pending
   const isPersonalInfoPending = transaction.personalInfo.status?.toLowerCase() === "pending";
 
-  // ✅ Check if should show button - show if:
-  // (ready-for-release documents OR pending+unpaid documents) AND
-  // NOT all cancelled+unpaid AND
-  // NOT personal info pending AND
-  // NOT pending+paid documents
-  const shouldShowButton = 
+  // ✅ Check if personal info status is cancelled
+  const isPersonalInfoCancelled = transaction.personalInfo.status?.toLowerCase() === "cancelled";
+
+  const shouldShowQRButton = 
     (hasReadyForReleaseDocuments || hasPendingAndUnpaidDocuments) && 
     !allCancelledAndUnpaid && 
-    !isPersonalInfoPending && 
+    !isPersonalInfoPending &&
+    !isPersonalInfoCancelled &&
     !hasPendingAndPaidDocuments;
+
+  // ✅ Check if should show "Cancel Request" button - only if personal info status is pending AND not cancelled
+  const shouldShowCancelButton = isPersonalInfoPending && !isPersonalInfoCancelled;
 
 
   let summaryPaymentStatus: string;
@@ -150,25 +161,43 @@ export default function RequestTransaction() {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
+          <IconButton
+            onPress={GoToHomeStack}
+            icon={require("../../../assets/icons/arrowWhite.png")}
+          />
           <Text style={styles.headerTitle}>Request Transaction Details</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
-          <View>
+          <View style={styles.statusContainer}>
             <TransactionStatus
               status={transaction.personalInfo.status || null}
               count_readyForRelease={readyForReleaseCount}
-              requestDocuments={requestDocuments}
               goback={GoToHomeStack}
             />
-            {/* ✅ Button shows if ready-for-release or pending+unpaid (but not pending+paid) */}
-            {shouldShowButton && (
+            
+            {/* ✅ View QR code Button - shows if ready-for-release or pending+unpaid (but not pending+paid and not cancelled) */}
+            {shouldShowQRButton && (
               <View style={styles.buttonContainer}>
                 <Button
                   title="View QR code"
                   onPress={() => {
                     GoToQueueScreen(transaction);
                   }}
+                  fontSize={18}
+                />
+              </View>
+            )}
+
+            {/* ✅ Cancel Request Button - shows only if personal info status is pending AND not cancelled */}
+            {shouldShowCancelButton && (
+              <View style={styles.buttonContainer}>
+                <Button
+                  title="Cancel Request"
+                  onPress={() => {
+                    open();
+                  }}
+                  fontSize={18}
                 />
               </View>
             )}
@@ -323,6 +352,13 @@ export default function RequestTransaction() {
             </Card>
           )}
         </ScrollView>
+
+        {/* ✅ Cancel Request Transaction Modal */}
+        <CancelRequestTransaction 
+          visible={visible} 
+          onClose={close}
+          transaction={transaction}
+        />
       </View>
     </SafeAreaView>
   );
@@ -340,9 +376,11 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 20,
+  },
+  statusContainer: {
+    alignItems: "center",
     backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
+    padding: 15,
   },
   headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700", marginLeft: 10 },
   content: { padding: 20, gap: 15 },

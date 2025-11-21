@@ -98,3 +98,29 @@ export async function getCurrentRequestTransactions(email: string, bustCache?: b
         throw new Error(error.response?.data?.message || 'Failed to fetch transactions');
     }
 }
+
+// ✅ Cancel all transactions for a personal info
+export async function cancelTransactionRequest(personalInfoId: number) {
+    try {
+        console.log('🚫 Cancelling all transactions for personal info ID:', personalInfoId);
+        
+        const response = await api.patch('office-service/CancelledTransaction', {
+            personalInfoId: personalInfoId
+        });
+        
+        console.log('✅ All transactions cancelled successfully:', response.data);
+        
+        // ✅ Emit socket event for real-time update
+        // const socket = getRequestTransactionProcessSocket();
+        // socket.emit('transactionCancelled', {
+        //     personalInfoId: personalInfoId,
+        //     cancelledAt: new Date().toISOString()
+        // });
+        
+        return response.data;
+        
+    } catch (error: any) {
+        console.error('❌ Cancel transaction failed:', error.response?.data || error);
+        throw new Error(error.response?.data?.message || 'Failed to cancel transactions');
+    }
+}

@@ -55,7 +55,6 @@ export default function QueueScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
             <IconButton
               onPress={goBack}
@@ -64,6 +63,7 @@ export default function QueueScreen() {
             <Text style={styles.headerTitle}>Queue Transaction</Text>
             <View style={{ width: 30 }} />
           </View>
+        <ScrollView contentContainerStyle={styles.content}>
 
           {/* QR code and Queue number */}
           <View style={styles.qrContainer}>
@@ -219,7 +219,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    justifyContent: "space-between",
+    padding: 15,
+    backgroundColor: "#ffffffff",
   },
   headerTitle: {
     fontSize: 18,
