@@ -2,11 +2,13 @@ import Button from "@/src/components/buttons/Button";
 import IconButton from "@/src/components/buttons/IconButton";
 import Card from "@/src/components/cards/Card";
 import TransactionStatus from "@/src/components/layout/TransactionStatus";
+import LoadingOverlay from "@/src/components/LoadingOverlay/loadingOverlay.";
 import CancelRequestTransaction from "@/src/components/modals/CancelRequestTransaction";
 import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransaction";
 import useModal from "@/src/hooks/componentHooks/useModal";
 import { RequestStackParamList } from "@/src/types/navigation";
 import { RouteProp, useRoute } from "@react-navigation/native";
+import React, { useEffect } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -22,8 +24,19 @@ export default function RequestTransaction() {
     close
   } = useModal();
 
-  const { GoToHomeStack, groupedTransactions, GoToQueueScreen} =
-    useRequestTransaction(transaction.transactions);
+  const { 
+    GoToHomeStack, 
+    groupedTransactions, 
+    GoToQueueScreen, 
+    loading, 
+    loadingMessage,
+    handleCancelRequest
+  } = useRequestTransaction(transaction.transactions);
+
+  // ✅ useEffect to monitor loading state
+  useEffect(() => {
+    console.log('📡 Loading state changed:', { loading, loadingMessage });
+  }, [loading, loadingMessage]);
 
   const requestDocuments = groupedTransactions["Request Document"] || [];
   const requestPayments = groupedTransactions["Payment"] || [];
@@ -158,6 +171,14 @@ export default function RequestTransaction() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      {/* ✅ Loading Overlay - Shows when loading is true */}
+      <LoadingOverlay 
+        visible={loading} 
+        message={loadingMessage}
+        size="large"
+        color="#19AF5B"
+      />
+
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>

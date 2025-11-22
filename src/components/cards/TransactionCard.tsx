@@ -34,7 +34,7 @@ const GoToRequestTransaction = React.useCallback(() => {
         onPress={GoToRequestTransaction}
         style={styles.personalInfoContainer}
       >
-        <Text style={styles.name}>{item.personalInfo.firstName}, {item.personalInfo.middleName}, {item.personalInfo.lastName}</Text>
+        <Text style={styles.name}>{item.personalInfo.firstName} {item.personalInfo.middleName} {item.personalInfo.lastName}</Text>
 
         <Text style={styles.sectionLabel}>Request Transactions</Text>
 

@@ -2,11 +2,27 @@ import { cancelTransactionRequest } from "@/src/services/OfficeService";
 import { AppTabsParamList } from "@/src/types/navigation";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 type HomeTabNavigationProp = BottomTabNavigationProp<AppTabsParamList, "HomeStack">;
 
 export const useRequestTransaction = (transactions: any[]) => {
+
+  // fetching data and socket listeners can be added here
+  useEffect(() => {
+  setLoading(true);
+  setLoadingMessage("Loading request transaction...");
+
+  // simulate fetch or initialization
+  setTimeout(() => {
+    setLoading(false);
+  }, 1500);
+}, []);
+
+
+  const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | undefined>(undefined);
+
   const TabNavigation = useNavigation<HomeTabNavigationProp>();
   const [isCancelling, setIsCancelling] = useState(false);
 
@@ -77,5 +93,7 @@ export const useRequestTransaction = (transactions: any[]) => {
     GoToQueueScreen,
     handleCancelRequest,
     isCancelling,
+    loading, setLoading, 
+    loadingMessage, setLoadingMessage
   };
 };
