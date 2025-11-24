@@ -8,7 +8,7 @@ import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransac
 import useModal from "@/src/hooks/componentHooks/useModal";
 import { RequestStackParamList } from "@/src/types/navigation";
 import { RouteProp, useRoute } from "@react-navigation/native";
-import React, { useEffect } from "react";
+import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -16,208 +16,202 @@ type TransactionRouteProp = RouteProp<RequestStackParamList, "Transaction">;
 
 export default function RequestTransaction() {
   const { params } = useRoute<TransactionRouteProp>();
-  const { transaction } = params;
+  const { transaction: initialTransaction } = params;
 
-  const {     
-    visible,
-    open,
-    close
-  } = useModal();
+  const { visible, open, close } = useModal();
+
+  const personalInfoId = initialTransaction?.personalInfo?.id;
 
   const { 
     GoToHomeStack, 
-    groupedTransactions, 
     GoToQueueScreen, 
     loading, 
     loadingMessage,
-    handleCancelRequest
-  } = useRequestTransaction(transaction.transactions);
+    transactionStatus,
+    personalInfoStatus,
+    handleCancelRequest,
+    activeTransactions
+  } = useRequestTransaction(initialTransaction.transactions, personalInfoId);
 
-  // ✅ useEffect to monitor loading state
-  useEffect(() => {
-    console.log('📡 Loading state changed:', { loading, loadingMessage });
-  }, [loading, loadingMessage]);
+  // ✅ Split activeTransactions by type
+  const requestDocuments = useMemo(() => 
+    activeTransactions.filter(t => t.transactionType === "Request Document"),
+    [activeTransactions]
+  );
 
-  const requestDocuments = groupedTransactions["Request Document"] || [];
-  const requestPayments = groupedTransactions["Payment"] || [];
+  const requestPayments = useMemo(() => 
+    activeTransactions.filter(t => t.transactionType === "Payment"),
+    [activeTransactions]
+  );
 
-  // Count "ready-for-release" documents
-  const readyForReleaseCount = requestDocuments.filter(
-    (doc) => doc.status?.toLowerCase() === "ready-for-release"
-  ).length;
+  // ✅ Count ready-for-release documents
+  const readyForReleaseCount = useMemo(() =>
+    requestDocuments.filter(doc => doc.status?.toLowerCase() === "ready-for-release").length,
+    [requestDocuments]
+  );
 
-  // Full Name
-  const fullName = [
-    transaction.personalInfo.firstName,
-    transaction.personalInfo.middleName,
-    transaction.personalInfo.lastName,
-  ]
-    .filter((n) => n?.trim() !== "")
+  // ✅ Total cost (excluding cancelled)
+  const nonCancelledItems = useMemo(() =>
+    activeTransactions.filter(item => item.status?.toLowerCase() !== "cancelled"),
+    [activeTransactions]
+  );
+
+  const totalCost = useMemo(() =>
+    nonCancelledItems.reduce((sum, item) => {
+      const fee = parseFloat(item.fee) || 0;
+      const copies = item.copies || 1;
+      return sum + (item.transactionType === "Request Document" ? fee * copies : fee);
+    }, 0),
+    [nonCancelledItems]
+  );
+
+  // ✅ Payment status (from individual transactions)
+  const allCancelled = nonCancelledItems.length === 0;
+  const allNonCancelledPaid = nonCancelledItems.every(item => item.paymentStatus?.toLowerCase() === "paid");
+  const summaryPaymentStatus = allCancelled
+    ? "All Canceled"
+    : allNonCancelledPaid
+      ? "Fully Paid"
+      : "Not Fully Paid";
+  const summaryStatusColor = allCancelled ? "#d32f2f" : allNonCancelledPaid ? "#19AF5B" : "#ff6f00";
+
+  // ✅ REMOVED useMemo - use value directly for real-time updates
+  const currentPersonalInfoStatus = personalInfoStatus || initialTransaction.personalInfo.status;
+
+  console.log("📊 Current Status (Direct):", {
+    personalInfoStatus,
+    transactionStatus,
+    activeTransactionsCount: activeTransactions.length,
+    currentPersonalInfoStatus,
+    timestamp: new Date().toLocaleTimeString()
+  });
+
+  // ✅ Check if personalInfo status is pending - NO useMemo
+  const isPersonalInfoPending = currentPersonalInfoStatus?.toLowerCase() === "pending";
+
+  // ✅ Check if personalInfo status is cancelled - NO useMemo
+  const isPersonalInfoCancelled = currentPersonalInfoStatus?.toLowerCase() === "cancelled";
+
+  // ✅ Get transaction and payment statuses - NO useMemo, use IIFE
+  const transactionStatusSummary = (() => {
+    if (activeTransactions.length === 0) return "No Transactions";
+    
+    const statuses = activeTransactions.map(t => t.status?.toLowerCase());
+    const allCompleted = statuses.every(s => s === "completed");
+    const allPending = statuses.every(s => s === "pending");
+    const allCancelled = statuses.every(s => s === "cancelled");
+    
+    if (allCompleted) return "All Completed";
+    if (allPending) return "All Pending";
+    if (allCancelled) return "All Cancelled";
+    return "Mixed Status";
+  })();
+
+  const paymentStatusSummary = (() => {
+    if (activeTransactions.length === 0) return "No Payments";
+    
+    const paymentStatuses = activeTransactions.map(t => t.paymentStatus?.toLowerCase());
+    const allPaid = paymentStatuses.every(s => s === "paid");
+    const allUnpaid = paymentStatuses.every(s => s === "unpaid");
+    
+    if (allPaid) return "All Paid";
+    if (allUnpaid) return "All Unpaid";
+    return "Partially Paid";
+  })();
+
+  // ✅ QR Button: Show if there are ready-for-release or pending unpaid documents, AND status is NOT pending/cancelled
+  const shouldShowQRButton = useMemo(() => {
+    const hasReadyForRelease = requestDocuments.some(d => d.status?.toLowerCase() === "ready-for-release");
+    const hasPendingUnpaid = requestDocuments.some(d => 
+      d.status?.toLowerCase() === "pending" && d.paymentStatus?.toLowerCase() === "unpaid"
+    );
+    
+    const show = (hasReadyForRelease || hasPendingUnpaid) && !isPersonalInfoPending && !isPersonalInfoCancelled;
+    
+    console.log('🔍 shouldShowQRButton:', {
+      hasReadyForRelease,
+      hasPendingUnpaid,
+      isPersonalInfoPending,
+      isPersonalInfoCancelled,
+      show
+    });
+    
+    return show;
+  }, [requestDocuments, isPersonalInfoPending, isPersonalInfoCancelled]);
+
+  // ✅ Cancel Button: Show ONLY if personalInfo status is pending
+  const shouldShowCancelButton = isPersonalInfoPending;
+
+  console.log('🔍 shouldShowCancelButton:', {
+    currentPersonalInfoStatus,
+    isPersonalInfoPending,
+    show: shouldShowCancelButton
+  });
+
+  // ✅ Full name and createdAt
+  const fullName = [initialTransaction.personalInfo.firstName, initialTransaction.personalInfo.middleName, initialTransaction.personalInfo.lastName]
+    .filter(Boolean)
     .join(" ");
 
-  // Format createdAt
-  const createdAt = transaction.personalInfo.createdAt
-    ? new Date(transaction.personalInfo.createdAt).toLocaleString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
+  const createdAt = initialTransaction.personalInfo.createdAt
+    ? new Date(initialTransaction.personalInfo.createdAt).toLocaleString("en-US", {
+        month: "long", day: "numeric", year: "numeric",
+        hour: "numeric", minute: "2-digit", hour12: true,
       })
     : null;
 
-  // ✅ Payment Status Logic with Canceled Handling
-  const allItems = [...requestDocuments, ...requestPayments];
-  
-  // ✅ Filter out canceled items for total cost calculation
-  const nonCancelledItems = allItems.filter(
-    (item) => item.status?.toLowerCase() !== "cancelled"
-  );
-  
-  // ✅ Calculate total cost excluding cancelled items (with copies multiplier for documents)
-  const totalCost = nonCancelledItems.reduce(
-    (sum, item) => {
-      const baseFee = parseFloat(item.fee) || 0;
-      const copies = item.copies || 1;
-      // Multiply fee by copies for request documents, use base fee for payments
-      const itemTotal = item.transactionType === "Request Document" 
-        ? baseFee * copies 
-        : baseFee;
-      return sum + itemTotal;
-    },
-    0
-  );
-  
-  // Check if all canceled
-  const allCancelled = allItems.every(
-    (item) => item.status?.toLowerCase() === "cancelled"
-  );
-  
-  // Check if all non-canceled items are paid
-  const allNonCancelledPaid = nonCancelledItems.length > 0 && nonCancelledItems.every(
-    (item) => item.paymentStatus?.toLowerCase() === "paid"
-  );
-
-  const allDocumentsAndPaymentsPaid = allItems.every(
-    (item) => item.paymentStatus?.toLowerCase() === "paid"
-  );
-
-  // ✅ Check if there are ready-for-release documents
-  const hasReadyForReleaseDocuments = requestDocuments.some(
-    (doc) => doc.status?.toLowerCase() === "ready-for-release"
-  );
-
-  // ✅ Check if there are pending documents that are unpaid
-  const hasPendingAndUnpaidDocuments = requestDocuments.some(
-    (doc) => 
-      doc.status?.toLowerCase() === "pending" && 
-      doc.paymentStatus?.toLowerCase() === "unpaid"
-  );
-
-  // ✅ Check if there are pending documents that are paid
-  const hasPendingAndPaidDocuments = requestDocuments.some(
-    (doc) => 
-      doc.status?.toLowerCase() === "pending" && 
-      doc.paymentStatus?.toLowerCase() === "paid"
-  );
-
-  // ✅ Check if all items are cancelled and unpaid
-  const allCancelledAndUnpaid = allItems.every(
-    (item) => 
-      item.status?.toLowerCase() === "cancelled" && 
-      item.paymentStatus?.toLowerCase() === "unpaid"
-  );
-
-  // ✅ Check if personal info status is pending
-  const isPersonalInfoPending = transaction.personalInfo.status?.toLowerCase() === "pending";
-
-  // ✅ Check if personal info status is cancelled
-  const isPersonalInfoCancelled = transaction.personalInfo.status?.toLowerCase() === "cancelled";
-
-  const shouldShowQRButton = 
-    (hasReadyForReleaseDocuments || hasPendingAndUnpaidDocuments) && 
-    !allCancelledAndUnpaid && 
-    !isPersonalInfoPending &&
-    !isPersonalInfoCancelled &&
-    !hasPendingAndPaidDocuments;
-
-  // ✅ Check if should show "Cancel Request" button - only if personal info status is pending AND not cancelled
-  const shouldShowCancelButton = isPersonalInfoPending && !isPersonalInfoCancelled;
-
-
-  let summaryPaymentStatus: string;
-  let summaryStatusColor: string;
-
-  if (allCancelled) {
-    summaryPaymentStatus = "All Canceled";
-    summaryStatusColor = "#d32f2f";
-  } else if (allNonCancelledPaid) {
-    summaryPaymentStatus = "Fully Paid";
-    summaryStatusColor = "#19AF5B";
-  } else {
-    summaryPaymentStatus = "Not Fully Paid";
-    summaryStatusColor = "#ff6f00";
-  }
-
-  // ✅ Helper function to calculate item total
-  const calculateItemTotal = (item: any) => {
-    const baseFee = parseFloat(item.fee) || 0;
-    const copies = item.copies || 1;
-    return item.transactionType === "Request Document" 
-      ? baseFee * copies 
-      : baseFee;
-  };
-
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      {/* ✅ Loading Overlay - Shows when loading is true */}
-      <LoadingOverlay 
-        visible={loading} 
-        message={loadingMessage}
-        size="large"
-        color="#19AF5B"
-      />
+      <LoadingOverlay visible={loading} message={loadingMessage} size="large" color="#19AF5B" />
 
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <IconButton
-            onPress={GoToHomeStack}
-            icon={require("../../../assets/icons/arrowWhite.png")}
-          />
+          <IconButton onPress={GoToHomeStack} icon={require("../../../assets/icons/arrowWhite.png")} />
           <Text style={styles.headerTitle}>Request Transaction Details</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
+          {/* Transaction Status & Buttons */}
           <View style={styles.statusContainer}>
             <TransactionStatus
-              status={transaction.personalInfo.status || null}
+              status={currentPersonalInfoStatus || null}
               count_readyForRelease={readyForReleaseCount}
               goback={GoToHomeStack}
             />
-            
-            {/* ✅ View QR code Button - shows if ready-for-release or pending+unpaid (but not pending+paid and not cancelled) */}
+
+            {/* ✅ QR Button */}
             {shouldShowQRButton && (
               <View style={styles.buttonContainer}>
                 <Button
                   title="View QR code"
                   onPress={() => {
-                    GoToQueueScreen(transaction);
+                    console.log('📋 Navigating to Queue:', {
+                      documents: requestDocuments.length,
+                      payments: requestPayments.length,
+                      personalInfoStatus: currentPersonalInfoStatus,
+                      transactionStatus
+                    });
+                    GoToQueueScreen({ 
+                      ...initialTransaction, 
+                      transactions: activeTransactions,
+                      personalInfo: {
+                        ...initialTransaction.personalInfo,
+                        status: currentPersonalInfoStatus
+                      }
+                    });
                   }}
                   fontSize={18}
                 />
               </View>
             )}
 
-            {/* ✅ Cancel Request Button - shows only if personal info status is pending AND not cancelled */}
+            {/* ✅ Cancel Button - Show ONLY when personalInfo status is pending */}
             {shouldShowCancelButton && (
               <View style={styles.buttonContainer}>
-                <Button
-                  title="Cancel Request"
-                  onPress={() => {
-                    open();
-                  }}
+                <Button 
+                  title="Cancel Request" 
+                  onPress={open} 
                   fontSize={18}
                 />
               </View>
@@ -227,83 +221,36 @@ export default function RequestTransaction() {
           {/* Personal Info Card */}
           <Card>
             <Text style={styles.sectionTitle}>Personal Information</Text>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Transaction Id</Text>
-              <Text style={styles.infoValue}>
-                {transaction.personalInfo.id || null}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Full Name</Text>
-              <Text style={styles.infoValue}>{fullName || null}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Email</Text>
-              <Text style={styles.infoValue}>
-                {transaction.personalInfo.email || null}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Grade</Text>
-              <Text style={styles.infoValue}>
-                {transaction.personalInfo.grade || null}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Section</Text>
-              <Text style={styles.infoValue}>
-                {transaction.personalInfo.section || null}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>School Year</Text>
-              <Text style={styles.infoValue}>
-                {transaction.personalInfo.schoolYear || null}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Student LRN</Text>
-              <Text style={styles.infoValue}>
-                {transaction.personalInfo.studentLrn || null}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Alumni</Text>
-              <Text style={styles.infoValue}>
-                {transaction.personalInfo.isAlumni ? "Yes" : "No"}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoKey}>Created At</Text>
-              <Text style={styles.infoValue}>{createdAt}</Text>
-            </View>
+            {[
+              ["Transaction Id", initialTransaction.personalInfo.id],
+              ["Full Name", fullName],
+              ["Email", initialTransaction.personalInfo.email],
+              ["Grade", initialTransaction.personalInfo.grade],
+              ["Section", initialTransaction.personalInfo.section],
+              ["School Year", initialTransaction.personalInfo.schoolYear],
+              ["Student LRN", initialTransaction.personalInfo.studentLrn],
+              ["Alumni", initialTransaction.personalInfo.isAlumni ? "Yes" : "No"],
+              ["Created At", createdAt],
+              ["Request Status", currentPersonalInfoStatus || "-"]
+            ].map(([key, value]) => (
+              <View style={styles.infoRow} key={key as string}>
+                <Text style={styles.infoKey}>{key}</Text>
+                <Text style={[styles.infoValue, key === "Request Status" && { color: 
+                  currentPersonalInfoStatus?.toLowerCase() === "pending" ? "#ff6f00" : 
+                  currentPersonalInfoStatus?.toLowerCase() === "cancelled" ? "#d32f2f" : 
+                  currentPersonalInfoStatus?.toLowerCase() === "completed" ? "#19AF5B" :
+                  "#666"
+                }]}>{value || "-"}</Text>
+              </View>
+            ))}
           </Card>
 
-          {/* Summary */}
+          {/* Transaction Summary */}
           <Card style={styles.summaryCard}>
             <Text style={styles.sectionTitle}>Transaction Summary</Text>
-
             <Text style={styles.total}>Total: ₱{totalCost.toFixed(2)}</Text>
-
             <Text style={styles.status}>
-              Payment Status:{" "}
-              <Text
-                style={[
-                  styles.statusValue,
-                  { color: summaryStatusColor },
-                ]}
-              >
-                {summaryPaymentStatus}
-              </Text>
+              Payment Status: <Text style={[styles.statusValue, { color: summaryStatusColor }]}>{summaryPaymentStatus}</Text>
             </Text>
           </Card>
 
@@ -311,36 +258,29 @@ export default function RequestTransaction() {
           {requestDocuments.length > 0 && (
             <Card style={styles.transactionsCard}>
               <Text style={styles.sectionTitle}>
-                Request Documents{" "}
-                {readyForReleaseCount > 0 && (
-                  <Text style={{ color: "#19AF5B" }}>
-                    ({readyForReleaseCount} ready)
-                  </Text>
-                )}
+                Request Documents {readyForReleaseCount > 0 && <Text style={{ color: "#19AF5B" }}>({readyForReleaseCount} ready)</Text>}
               </Text>
-
-              {requestDocuments.map((req, i) => (
-                <View key={i} style={styles.transactionRow}>
+              {requestDocuments.map((doc) => (
+                <View key={doc.id} style={styles.transactionRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.transactionItem}>
-                      {req.transactionDetails || null}
-                    </Text>
-                    <Text style={styles.smallText}>
-                      Copies: {req.copies || 1}
-                    </Text>
-                    <Text style={styles.smallText}>
-                      Status: {req.status || null}
-                    </Text>
-                    <Text style={styles.smallText}>
-                      Payment: {req.paymentStatus || null}
-                    </Text>
+                    <Text style={styles.transactionItem}>{doc.transactionDetails || "-"}</Text>
+                    <Text style={styles.smallText}>Copies: {doc.copies || 1}</Text>
+                    <Text style={[styles.smallText, { 
+                      color: doc.status?.toLowerCase() === "completed" ? "#19AF5B" :
+                             doc.status?.toLowerCase() === "cancelled" ? "#d32f2f" :
+                             doc.status?.toLowerCase() === "ready-for-release" ? "#19AF5B" :
+                             "#ff6f00"
+                    }]}>Status: {doc.status || "-"}</Text>
+                    <Text style={[styles.smallText, { 
+                      color: doc.paymentStatus?.toLowerCase() === "paid" ? "#19AF5B" :
+                             doc.paymentStatus?.toLowerCase() === "unpaid" ? "#d32f2f" :
+                             "#666"
+                    }]}>Payment: {doc.paymentStatus || "-"}</Text>
                   </View>
                   <View style={styles.feeColumn}>
-                    <Text style={styles.transactionFee}>
-                      ₱{(parseFloat(req.fee) || 0).toFixed(2)} x {req.copies || 1}
-                    </Text>
+                    <Text style={styles.transactionFee}>₱{(parseFloat(doc.fee) || 0).toFixed(2)} x {doc.copies || 1}</Text>
                     <Text style={[styles.transactionFee, { color: "#19AF5B", fontWeight: "700" }]}>
-                      ₱{calculateItemTotal(req).toFixed(2)}
+                      ₱{((parseFloat(doc.fee) || 0) * (doc.copies || 1)).toFixed(2)}
                     </Text>
                   </View>
                 </View>
@@ -352,34 +292,31 @@ export default function RequestTransaction() {
           {requestPayments.length > 0 && (
             <Card style={styles.transactionsCard}>
               <Text style={styles.sectionTitle}>Request Payments</Text>
-              {requestPayments.map((req, i) => (
-                <View key={i} style={styles.transactionRow}>
+              {requestPayments.map((pay) => (
+                <View key={pay.id} style={styles.transactionRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.transactionItem}>
-                      {req.transactionDetails || null}
-                    </Text>
-                    <Text style={styles.smallText}>
-                      Status: {req.status || null}
-                    </Text>
-                    <Text style={styles.smallText}>
-                      Payment: {req.paymentStatus || null}
-                    </Text>
+                    <Text style={styles.transactionItem}>{pay.transactionDetails || "-"}</Text>
+                    <Text style={[styles.smallText, { 
+                      color: pay.status?.toLowerCase() === "completed" ? "#19AF5B" :
+                             pay.status?.toLowerCase() === "cancelled" ? "#d32f2f" :
+                             "#ff6f00"
+                    }]}>Status: {pay.status || "-"}</Text>
+                    <Text style={[styles.smallText, { 
+                      color: pay.paymentStatus?.toLowerCase() === "paid" ? "#19AF5B" :
+                             pay.paymentStatus?.toLowerCase() === "unpaid" ? "#d32f2f" :
+                             "#666"
+                    }]}>Payment: {pay.paymentStatus || "-"}</Text>
                   </View>
-                  <Text style={styles.transactionFee}>
-                    ₱{(parseFloat(req.fee) || 0).toFixed(2)}
-                  </Text>
+                  <Text style={styles.transactionFee}>₱{(parseFloat(pay.fee) || 0).toFixed(2)}</Text>
                 </View>
               ))}
             </Card>
           )}
+
         </ScrollView>
 
-        {/* ✅ Cancel Request Transaction Modal */}
-        <CancelRequestTransaction 
-          visible={visible} 
-          onClose={close}
-          transaction={transaction}
-        />
+        {/* Cancel Modal */}
+        <CancelRequestTransaction visible={visible} onClose={close} transaction={initialTransaction} />
       </View>
     </SafeAreaView>
   );
@@ -388,21 +325,9 @@ export default function RequestTransaction() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#19AF5B" },
   container: { flex: 1, backgroundColor: "#F9F9F9" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#19AF5B",
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-  },
-  buttonContainer: {
-    padding: 20,
-  },
-  statusContainer: {
-    alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 15,
-  },
+  header: { flexDirection: "row", alignItems: "center", backgroundColor: "#19AF5B", paddingVertical: 15, paddingHorizontal: 10 },
+  buttonContainer: { padding: 20 },
+  statusContainer: { alignItems: "center", backgroundColor: "#fff", padding: 15 },
   headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700", marginLeft: 10 },
   content: { padding: 20, gap: 15 },
   sectionTitle: { fontWeight: "700", marginBottom: 8, color: "#19AF5B" },

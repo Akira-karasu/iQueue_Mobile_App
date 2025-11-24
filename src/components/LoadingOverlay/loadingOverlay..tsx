@@ -8,6 +8,7 @@ interface LoadingOverlayProps {
   color?: string;
 }
 
+// ✅ Make sure it's exported as DEFAULT
 export default function LoadingOverlay({ 
   visible, 
   message = "Loading...",
@@ -19,7 +20,7 @@ export default function LoadingOverlay({
       transparent 
       animationType="fade" 
       visible={visible}
-      onRequestClose={() => {}} // ✅ Prevent back button from closing
+      onRequestClose={() => {}} 
     >
       <View style={styles.overlay}>
         <View style={styles.content}>

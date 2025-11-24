@@ -124,3 +124,23 @@ export async function cancelTransactionRequest(personalInfoId: number) {
         throw new Error(error.response?.data?.message || 'Failed to cancel transactions');
     }
 }
+
+export async function getRequestTransactionRequest(personalInfoId: number) {
+    try {
+        console.log('📡 Fetching request transaction for personalInfoId:', personalInfoId);
+        
+        const response = await api.get(`office-service/GetRequestTransaction/${personalInfoId}`, {
+            params: {
+                _t: Date.now() // ✅ Bust cache
+            }
+        });
+        
+        console.log('📦 Request transaction received:', response.data);
+        
+        return response.data;
+        
+    } catch (error: any) {
+        console.error('❌ Request transaction fetch error:', error);
+        throw new Error(error.response?.data?.message || 'Failed to fetch request transaction');
+    }
+}

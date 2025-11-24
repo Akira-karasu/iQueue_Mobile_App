@@ -17,7 +17,7 @@ export default function CancelRequestTransaction({
   transaction 
 }: CancelRequestTransactionProps) {
   const { handleCancelRequest, GoToHomeStack, isCancelling } = 
-    useRequestTransaction(transaction?.transactions || []);
+    useRequestTransaction(transaction?.transactions || [], transaction?.personalInfo?.id);
   
   const [error, setError] = useState("");
 
