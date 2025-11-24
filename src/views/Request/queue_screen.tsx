@@ -12,7 +12,17 @@ type QueueScreenNavigationProp = NativeStackNavigationProp<RequestStackParamList
 export default function QueueScreen() {
   const navigation = useNavigation<QueueScreenNavigationProp>();
   const { params } = useRoute<RouteProp<RequestStackParamList, "Queue">>();
-  const { queueData } = params;
+  const { queueData, queueStatus } = params;
+
+  console.log('📋 Queue Status:', queueStatus || null);
+
+  // ✅ UPDATED: Include 'waiting', 'pending', 'in-process' instead of just valid ones
+  const VALID_QUEUE_STATUSES = ['waiting', 'pending', 'in-process', 'on-hold', 'called'];
+  
+  // ✅ Check if queueStatus has data AND status is in valid list
+  const hasValidQueueStatus = queueStatus && 
+    Object.keys(queueStatus).length > 0 &&
+    VALID_QUEUE_STATUSES.includes(queueStatus.status?.toLowerCase());
 
   const goBack = () => {
     navigation.goBack();
@@ -42,54 +52,94 @@ export default function QueueScreen() {
       transaction.status?.toLowerCase() !== "cancelled"
   );
 
-  // ✅ Check if status is processing and has unpaid documents or payments
-  const isProcessingWithUnpaid = 
-    queueData.personalInfo.status?.toLowerCase() === "processing" && 
-    (unpaidDocuments.length > 0 || unpaidPayments.length > 0);
-
   // ✅ Create JSON format for QR code
   const qrData = JSON.stringify({
     code: queueData.personalInfo.transactionCode
   });
 
+  // ✅ Get status color based on queue status (updated colors)
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'waiting':
+        return '#FFA500'; // Orange
+      case 'pending':
+        return '#FFD700'; // Gold
+      case 'in-process':
+        return '#4A90E2'; // Blue
+      case 'called':
+        return '#FF6B6B'; // Red
+      case 'on-hold':
+        return '#FFD700'; // Gold
+      default:
+        return '#666';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.container}>
-          <View style={styles.header}>
-            <IconButton
-              onPress={goBack}
-              icon={require("../../../assets/icons/ArrowBack.png")}
-            />
-            <Text style={styles.headerTitle}>Queue Transaction</Text>
-            <View style={{ width: 30 }} />
-          </View>
+        <View style={styles.header}>
+          <IconButton
+            onPress={goBack}
+            icon={require("../../../assets/icons/ArrowBack.png")}
+          />
+          <Text style={styles.headerTitle}>Queue Transaction</Text>
+          <View style={{ width: 30 }} />
+        </View>
         <ScrollView contentContainerStyle={styles.content}>
 
-          {/* QR code and Queue number */}
-          <View style={styles.qrContainer}>
-            <QRCode
-              value={qrData}
-              size={250}
-              level="H"
-              includeMargin={true}
-              fgColor="#19AF5B"
-              bgColor="#fff"
-            />
-            <Text style={styles.qrValue}>{queueData.personalInfo.transactionCode}</Text>
-          </View>
-
-          {/* ✅ Show warning if processing with unpaid documents or payments */}
-          {/* {isProcessingWithUnpaid && (
-            <View style={styles.warningCard}>
-              <Text style={styles.warningTitle}>⚠️ Payment Required</Text>
-              <Text style={styles.warningText}>
-                You have {unpaidDocuments.length > 0 ? `${unpaidDocuments.length} unpaid document(s)` : ''} 
-                {unpaidDocuments.length > 0 && unpaidPayments.length > 0 ? ' and ' : ''}
-                {unpaidPayments.length > 0 ? `${unpaidPayments.length} unpaid payment(s)` : ''}.
-                Please complete the payment to proceed.
-              </Text>
+          {/* ✅ CONDITIONAL RENDER: Show queue info if valid status, otherwise show QR */}
+          {!hasValidQueueStatus ? (
+            // No valid queue status - show QR code only
+            <View style={styles.qrContainer}>
+              <QRCode
+                value={qrData}
+                size={250}
+                level="H"
+                includeMargin={true}
+                fgColor="#19AF5B"
+                bgColor="#fff"
+              />
+              <Text style={styles.qrValue}>{queueData.personalInfo.transactionCode}</Text>
             </View>
-          )} */}
+          ) : (
+            // ✅ Show queue info card when valid status (waiting, pending, in-process)
+            <View style={styles.queueInfoContainer}>
+              {/* Queue Status Card */}
+              <View style={styles.queueStatusCard}>
+                {/* Office */}
+                <View style={styles.queueStatusRow}>
+                  <Text style={styles.queueLabel}>Office:</Text>
+                  <Text style={styles.queueOfficeText}>{queueStatus.office}</Text>
+                </View>
+                
+                {/* Queue Number */}
+                <View style={styles.queueStatusRow}>
+                  <Text style={styles.queueLabel}>Queue Number:</Text>
+                  <Text style={styles.queueNumber}>{queueStatus.queueNumber}</Text>
+                </View>
+                
+                {/* Position */}
+                <View style={styles.queueStatusRow}>
+                  <Text style={styles.queueLabel}>Position:</Text>
+                  <Text style={styles.queuePositionText}>
+                    {queueStatus.position === 0 ? 'NEXT' : `#${queueStatus.position}`}
+                  </Text>
+                </View>
+                
+                {/* Status */}
+                <View style={[styles.queueStatusRow, { borderBottomWidth: 0 }]}>
+                  <Text style={styles.queueLabel}>Status:</Text>
+                  <Text style={[
+                    styles.queueStatusText,
+                    { color: getStatusColor(queueStatus.status) }
+                  ]}>
+                    {queueStatus.status?.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Ready for Release Documents */}
           {readyForReleaseDocuments.length > 0 && (
@@ -140,9 +190,9 @@ export default function QueueScreen() {
                   <View style={[styles.documentCard, styles.unpaidCard]}>
                     <Text style={styles.documentTitle}>{item.transactionDetails}</Text>
                     <View style={styles.infoRow}>
-                      <Text style={styles.label}>Status:</Text>
-                      <Text style={styles.status}>
-                        {item.paymentStatus}
+                      <Text style={styles.label}>Payment Status:</Text>
+                      <Text style={[styles.status, { color: '#FF6B6B' }]}>
+                        {item.paymentStatus?.toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.infoRow}>
@@ -151,7 +201,7 @@ export default function QueueScreen() {
                     </View>
                     <View style={styles.infoRow}>
                       <Text style={styles.label}>Fee:</Text>
-                      <Text style={[styles.value, { fontWeight: '700' }]}>
+                      <Text style={[styles.value, { fontWeight: '700', color: '#FF6B6B' }]}>
                         ₱{item.fee}
                       </Text>
                     </View>
@@ -181,14 +231,14 @@ export default function QueueScreen() {
                   <View style={[styles.documentCard, styles.unpaidCard]}>
                     <Text style={styles.documentTitle}>{item.transactionDetails}</Text>
                     <View style={styles.infoRow}>
-                      <Text style={styles.label}>Status:</Text>
-                      <Text style={styles.status}>
-                        {item.paymentStatus}
+                      <Text style={styles.label}>Payment Status:</Text>
+                      <Text style={[styles.status, { color: '#FF6B6B' }]}>
+                        {item.paymentStatus?.toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.infoRow}>
-                      <Text style={styles.label}>Fee:</Text>
-                      <Text style={[styles.value, { fontWeight: '700' }]}>
+                      <Text style={styles.label}>Amount:</Text>
+                      <Text style={[styles.value, { fontWeight: '700', color: '#FF6B6B' }]}>
                         ₱{item.fee}
                       </Text>
                     </View>
@@ -207,8 +257,13 @@ export default function QueueScreen() {
   );
 }
 
+// ...existing styles...
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#19AF5B" },
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: "#19AF5B" 
+  },
   container: {
     flex: 1,
     backgroundColor: '#F9F9F9',
@@ -230,25 +285,8 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
-  warningCard: {
-    backgroundColor: '#fff3cd',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#ff6f00',
-  },
-  warningTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#ff6f00',
-    marginBottom: 8,
-  },
-  warningText: {
-    fontSize: 13,
-    color: '#333',
-    lineHeight: 18,
-  },
+
+  // ✅ QR Code Styles
   qrValue: {
     fontSize: 18,
     fontWeight: '700',
@@ -266,9 +304,61 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
-    width: '100%',
-    alignSelf: 'center',
+    elevation: 3,
   },
+
+  // ✅ Queue Info Styles
+  queueInfoContainer: {
+    marginBottom: 20,
+  },
+  queueStatusCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    borderLeftWidth: 5,
+    borderLeftColor: '#19AF5B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  queueStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  queueLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  queueNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#19AF5B',
+  },
+  queueStatusText: {
+    fontSize: 14,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  queuePositionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FF6B6B',
+  },
+  queueOfficeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#222',
+  },
+
+  // ✅ Document Styles
   title: {
     fontSize: 18,
     fontWeight: '700',
@@ -289,7 +379,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   unpaidCard: {
-    borderLeftColor: '#19AF5B',
+    borderLeftColor: '#FF6B6B',
     backgroundColor: '#fff',
   },
   documentTitle: {
@@ -301,7 +391,7 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   label: {
     fontSize: 13,

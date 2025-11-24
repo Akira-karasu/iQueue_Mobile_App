@@ -144,3 +144,54 @@ export async function getRequestTransactionRequest(personalInfoId: number) {
         throw new Error(error.response?.data?.message || 'Failed to fetch request transaction');
     }
 }
+
+// ✅ NEW: Get queue status by personal ID
+export async function getQueueStatusByPersonalId(personalId: number) {
+    try {
+        console.log('📡 Fetching queue status for personalId:', personalId);
+        
+        const response = await api.get(`queue-number/status/${personalId}`, {
+            params: {
+                _t: Date.now() // ✅ Bust cache to get real-time status
+            }
+        });
+        
+        console.log('📦 Queue status received:', response.data);
+        
+        return response.data;
+        
+    } catch (error: any) {
+        console.error('❌ Queue status fetch error:', error);
+        throw new Error(error.response?.data?.message || 'Failed to fetch queue status');
+    }
+}
+
+// ✅ Alternative: Fetch all data (transactions + queue status together)
+// export async function getRequestTransactionWithQueueStatus(personalInfoId: number) {
+//     try {
+//         console.log('📡 Fetching request transaction & queue status for:', personalInfoId);
+        
+//         const [transactionResponse, queueResponse] = await Promise.all([
+//             api.get(`office-service/GetRequestTransaction/${personalInfoId}`, {
+//                 params: { _t: Date.now() }
+//             }),
+//             api.get(`queue/status/${personalInfoId}`, {
+//                 params: { _t: Date.now() }
+//             })
+//         ]);
+        
+//         console.log('📦 Data received:', {
+//             transactions: transactionResponse.data,
+//             queueStatus: queueResponse.data
+//         });
+        
+//         return {
+//             ...transactionResponse.data,
+//             queueStatus: queueResponse.data
+//         };
+        
+//     } catch (error: any) {
+//         console.error('❌ Fetch error:', error);
+//         throw new Error(error.response?.data?.message || 'Failed to fetch data');
+//     }
+// }

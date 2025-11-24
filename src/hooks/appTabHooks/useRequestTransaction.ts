@@ -1,4 +1,4 @@
-import { cancelTransactionRequest, getRequestTransactionRequest } from "@/src/services/OfficeService";
+import { cancelTransactionRequest, getQueueStatusByPersonalId, getRequestTransactionRequest } from "@/src/services/OfficeService";
 import {
   disconnectRequestTransactionProcessSocket,
   getRequestTransactionProcessSocket
@@ -20,6 +20,7 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
   const [personalInfoStatus, setPersonalInfoStatus] = useState<string | null>(null);
   const [refreshedTransactions, setRefreshedTransactions] = useState<any[]>([]);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [queueStatus, setQueueStatus] = useState<any>(null);
 
   // ✅ REFS (for cleanup & socket management)
   const socketRef = useRef<any>(null);
@@ -79,6 +80,22 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     return status;
   }, [activeTransactions]);
 
+  // ✅ Fetch queue status
+  const fetchQueueStatus = useCallback(async () => {
+    try {
+      console.log("📊 Fetching queue status for personalInfoId:", personalInfoId);
+      const status = await getQueueStatusByPersonalId(personalInfoId);
+      
+      if (status) {
+        console.log("✅ Queue status fetched:", status);
+        setQueueStatus(status);
+      }
+    } catch (error) {
+      console.error("❌ Failed to fetch queue status:", error);
+      setQueueStatus(null);
+    }
+  }, [personalInfoId]);
+
   // ✅ Refetch function
   const refetchData = useCallback(async (statusMessage: string) => {
     try {
@@ -106,6 +123,9 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
         }
       }
 
+      // ✅ Also fetch queue status after refetch
+      await fetchQueueStatus();
+
       // ✅ SIMPLIFIED: Only show "Loading update..." for 1 second
       setLoadingMessage("Loading update...");
       
@@ -124,7 +144,7 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
         setLoadingMessage(undefined);
       }, 1000);
     }
-  }, [personalInfoId]);
+  }, [personalInfoId, fetchQueueStatus]);
 
   // ✅ Update individual transaction - FIXED: Don't spread data!
   const updateSingleTransaction = useCallback((transactionId: number, updates: any) => {
@@ -181,6 +201,9 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     setLoading(true);
     setLoadingMessage("Loading...");
     setSocketConnected(false);
+
+    // ✅ Fetch queue status on mount
+    fetchQueueStatus();
 
     const socket = getRequestTransactionProcessSocket(personalInfoId);
     socketRef.current = socket;
@@ -420,7 +443,7 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
       socketRef.current = null;
       setSocketConnected(false);
     };
-  }, [personalInfoId, updateSingleTransaction, refetchData]);
+  }, [personalInfoId, updateSingleTransaction, refetchData, fetchQueueStatus]);
 
   // ✅ NAVIGATION ACTIONS
   const GoToHomeStack = useCallback(() => {
@@ -430,9 +453,9 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
   const GoToQueueScreen = useCallback((queueData: any) => {
     TabNavigation.navigate("RequestStack", {
       screen: "Queue",
-      params: { queueData },
+      params: { queueData, queueStatus },
     });
-  }, [TabNavigation]);
+  }, [TabNavigation, queueStatus]);
 
   // ✅ CANCEL REQUEST
   const handleCancelRequest = useCallback(
@@ -471,6 +494,7 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     paymentStatus,
     transactionStatus,
     personalInfoStatus,
+    queueStatus,
     socketConnected,
     loading,
     loadingMessage,
@@ -482,5 +506,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     handleCancelRequest,
     refetchData,
     updateSingleTransaction,
+    fetchQueueStatus,
   };
 };

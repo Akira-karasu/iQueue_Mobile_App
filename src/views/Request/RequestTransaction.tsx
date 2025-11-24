@@ -231,7 +231,6 @@ export default function RequestTransaction() {
               ["Student LRN", initialTransaction.personalInfo.studentLrn],
               ["Alumni", initialTransaction.personalInfo.isAlumni ? "Yes" : "No"],
               ["Created At", createdAt],
-              ["Request Status", currentPersonalInfoStatus || "-"]
             ].map(([key, value]) => (
               <View style={styles.infoRow} key={key as string}>
                 <Text style={styles.infoKey}>{key}</Text>
