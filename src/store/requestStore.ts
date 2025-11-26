@@ -31,13 +31,13 @@ export interface RegistrarRequestList {
   totalCost: number;
 }
 
-// add here
+// ✅ CORRECTED: FormData interface
 export interface FormData {
   email: string;
   Lrn: string;
   FirstName: string;
   MiddleInitial: string;
-  LastName: String;
+  LastName: string;
   isAlumni: boolean | null;
   studentYearLevel: string;
   studentGradeLevel: string;
@@ -79,15 +79,16 @@ interface RequestStore {
   removeAccountingItem: (paymentName: string) => void;
   clearAccountingList: () => void;
   
+  // ✅ NEW: Build RequestTransact payload
+  buildRequestTransactPayload: () => Record<string, any>;
 }
 
-export const useRequestStore = create<RequestStore>((set) => ({
+export const useRequestStore = create<RequestStore>((set, get) => ({
 
   setEmailFromToken: (email: string) =>
-  set((state) => ({
-    formData: { ...state.formData, email },
-  })),
-
+    set((state) => ({
+      formData: { ...state.formData, email },
+    })),
 
   RegistrarRequestList: {
     officeName: "Registrar Office",
@@ -104,7 +105,6 @@ export const useRequestStore = create<RequestStore>((set) => ({
   availableDocuments: documents,
   availablePayments: payment,
 
-  // add here
   formData: {
     email: "",
     Lrn: "",
@@ -126,12 +126,11 @@ export const useRequestStore = create<RequestStore>((set) => ({
         : { ...state.formData, ...updater }
     })),
 
-
-  // add here
+  // ✅ Reset form data (keep email)
   resetFormData: () =>
     set((state) => ({
       formData: {
-        email: state.formData.email, // keep current email
+        email: state.formData.email,
         Lrn: "",
         FirstName: "",
         MiddleInitial: "",
@@ -143,7 +142,6 @@ export const useRequestStore = create<RequestStore>((set) => ({
         pictureID: ""
       },
     })),
-
 
   // 📄 Document controls
   setAvailableDocuments: (docs) => set({ availableDocuments: docs }),
@@ -241,6 +239,33 @@ export const useRequestStore = create<RequestStore>((set) => ({
         totalCost: 0,
       },
     })),
+
+  // ✅ NEW: Build RequestTransact payload for backend
+  buildRequestTransactPayload: () => {
+    const state = get();
+    
+    const payload = {
+      RegistrarOffice: {
+        requestList: state.RegistrarRequestList.requestList.map(item => ({
+          id: item.id,
+          DocumentName: item.DocumentName,
+          Purpose: item.Purpose,
+          Quantity: item.Quantity,
+          Total: item.Total,
+        })),
+      },
+      AccountingOffice: {
+        requestList: state.AccountingRequestList.requestList.map(item => ({
+          id: item.id,
+          PaymentFees: item.PaymentFees,
+          Price: item.Price,
+        })),
+      },
+    };
+
+    console.log('📦 RequestTransact Payload:', JSON.stringify(payload, null, 2));
+    return payload;
+  },
 }));
 
 // 🔄 Fetch remote data
@@ -253,9 +278,9 @@ export const useRequestStore = create<RequestStore>((set) => ({
       Array.isArray((docsResp as any).documents) ? (docsResp as any).documents :
       documents;
     useRequestStore.setState({ availableDocuments: docs });
-    console.log("Fetched documents:", docs);
+    console.log("📄 Fetched documents:", docs);
   } catch (err: any) {
-    console.warn("getDocuments failed, using local documents:", err?.message || err);
+    console.warn("❌ getDocuments failed, using local documents:", err?.message || err);
     useRequestStore.setState({ availableDocuments: documents });
   }
 
@@ -267,9 +292,9 @@ export const useRequestStore = create<RequestStore>((set) => ({
       Array.isArray((paysResp as any).payments) ? (paysResp as any).payments :
       payment;
     useRequestStore.setState({ availablePayments: pays });
-    console.log("Fetched payments:", pays);
+    console.log("💵 Fetched payments:", pays);
   } catch (err: any) {
-    console.warn("getPayments failed, using local payments:", err?.message || err);
+    console.warn("❌ getPayments failed, using local payments:", err?.message || err);
     useRequestStore.setState({ availablePayments: payment });
   }
 })();

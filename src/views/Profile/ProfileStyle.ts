@@ -129,7 +129,7 @@ const style = StyleSheet.create({
     zIndex: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10
+    gap: 10,
   }
 
 });

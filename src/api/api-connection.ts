@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Get your API URL from environment variables
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.iqueue.online';
+const API_URL = 'https://api.iqueue.online';
 
 // Create Axios instance
 const api = axios.create({

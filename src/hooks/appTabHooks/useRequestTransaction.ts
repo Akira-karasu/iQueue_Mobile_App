@@ -13,8 +13,6 @@ type HomeTabNavigationProp = BottomTabNavigationProp<AppTabsParamList, "HomeStac
 export const useRequestTransaction = (transactions: any[], personalInfoId: number) => {
 
   // ✅ STATE
-  const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState<string | undefined>(undefined);
   const [isCancelling, setIsCancelling] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState<string | null>(null);
   const [personalInfoStatus, setPersonalInfoStatus] = useState<string | null>(null);
@@ -24,7 +22,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
 
   // ✅ REFS (for cleanup & socket management)
   const socketRef = useRef<any>(null);
-  const timerRef = useRef<any>(null);
   const reconnectAttemptRef = useRef(0);
   const refetchTimeoutRef = useRef<any>(null);
   const connectTimeoutRef = useRef<any>(null);
@@ -112,7 +109,9 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
           id: t.id,
           name: t.transactionDetails,
           fee: t.fee,
-          copies: t.copies
+          copies: t.copies,
+          status: t.status,
+          paymentStatus: t.paymentStatus,
         })));
         
         setRefreshedTransactions(updatedTransactions);
@@ -125,28 +124,12 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
 
       // ✅ Also fetch queue status after refetch
       await fetchQueueStatus();
-
-      // ✅ SIMPLIFIED: Only show "Loading update..." for 1 second
-      setLoadingMessage("Loading update...");
-      
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setLoading(false);
-        setLoadingMessage(undefined);
-      }, 1000);
     } catch (error) {
       console.error("❌ Refetch error:", error);
-      setLoadingMessage("Loading update...");
-      
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setLoading(false);
-        setLoadingMessage(undefined);
-      }, 1000);
     }
   }, [personalInfoId, fetchQueueStatus]);
 
-  // ✅ Update individual transaction - FIXED: Don't spread data!
+  // ✅ Update individual transaction - FIXED: Only update specified fields
   const updateSingleTransaction = useCallback((transactionId: number, updates: any) => {
     console.log("🔄 updateSingleTransaction called:", { 
       transactionId, 
@@ -198,8 +181,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     }
 
     console.log("📡 STEP 1: Setting up socket for personalInfoId:", personalInfoId);
-    setLoading(true);
-    setLoadingMessage("Loading...");
     setSocketConnected(false);
 
     // ✅ Fetch queue status on mount
@@ -227,8 +208,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     // ✅ STEP 4: On room joined
     const handleRoomJoined = (data: any) => {
       console.log("✅ STEP 4: Joined room:", data.roomName);
-      setLoading(false);
-      setLoadingMessage(undefined);
       
       if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
     };
@@ -237,8 +216,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     const handlePersonalInfoStatusUpdated = (data: any) => {
       console.log("📡 STEP 5a: PersonalInfo status updated:", data.status);
       setPersonalInfoStatus(data.status);
-      setLoading(true);
-      setLoadingMessage("Loading update...");
 
       if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
       refetchTimeoutRef.current = setTimeout(() => {
@@ -250,8 +227,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     const handleWalkinStatusUpdated = (data: any) => {
       console.log("📡 STEP 5b: Walkin status updated:", data.status);
       setPersonalInfoStatus(data.status);
-      setLoading(true);
-      setLoadingMessage("Loading update...");
 
       if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
       refetchTimeoutRef.current = setTimeout(() => {
@@ -259,78 +234,61 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
       }, 500);
     };
 
-    // ✅ STEP 5c: Transaction Status Changed
+    // ✅ STEP 5c: Transaction Status Changed - REAL-TIME UPDATE
     const handleTransactionStatusChanged = (data: any) => {
       console.log("📡 STEP 5c: Transaction status changed:", {
         transactionId: data.transactionId,
-        status: data.status
+        oldStatus: "previous",
+        newStatus: data.status
       });
       
-      // ✅ Only update status, preserve other fields
+      // ✅ Update the transaction immediately
       updateSingleTransaction(data.transactionId, {
         status: data.status,
       });
       
       setTransactionStatus(data.status);
-      setLoading(true);
-      setLoadingMessage("Loading update...");
-
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setLoading(false);
-        setLoadingMessage(undefined);
-      }, 1000);
+      
+      console.log("✅ Transaction status updated in UI");
     };
 
-    // ✅ STEP 5d: Single Transaction Updated - FIXED!
+    // ✅ STEP 5d: Single Transaction Updated - REAL-TIME UPDATE
     const handleSingleTransactionUpdated = (data: any) => {
       console.log("📡 STEP 5d: Single transaction updated:", {
         id: data.transactionId || data.id,
-        status: data.status,
-        paymentStatus: data.paymentStatus
+        oldStatus: "previous",
+        newStatus: data.status,
+        oldPaymentStatus: "previous",
+        newPaymentStatus: data.paymentStatus
       });
       
       const transactionId = data.transactionId || data.id;
       
-      // ✅ ONLY update status and paymentStatus, NOT spreading ...data
-      // This preserves transactionDetails, fee, copies, etc.
+      // ✅ Update both status and paymentStatus
       updateSingleTransaction(transactionId, {
         status: data.status,
         paymentStatus: data.paymentStatus,
       });
       
-      setLoading(true);
-      setLoadingMessage("Loading update...");
-
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setLoading(false);
-        setLoadingMessage(undefined);
-      }, 1000);
+      console.log("✅ Single transaction updated in UI");
     };
 
-    // ✅ STEP 5d2: Payment Status Changed - FIXED!
+    // ✅ STEP 5d2: Payment Status Changed - REAL-TIME UPDATE
     const handlePaymentStatusChanged = (data: any) => {
       console.log("📡 STEP 5d2: Payment status changed:", {
         id: data.transactionId || data.id,
-        paymentStatus: data.paymentStatus
+        oldPaymentStatus: "previous",
+        newPaymentStatus: data.paymentStatus
       });
       
       const transactionId = data.transactionId || data.id;
       
-      // ✅ ONLY update paymentStatus, NOT spreading ...data
+      // ✅ Update paymentStatus only
       updateSingleTransaction(transactionId, {
         paymentStatus: data.paymentStatus,
       });
       
-      setLoading(true);
-      setLoadingMessage("Loading update...");
-
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setLoading(false);
-        setLoadingMessage(undefined);
-      }, 1000);
+      console.log("✅ Payment status updated in UI");
     };
 
     // ✅ STEP 5e: All Transactions Updated
@@ -343,7 +301,9 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
           updatedTransactions.map(t => ({
             id: t.id,
             name: t.transactionDetails,
-            fee: t.fee
+            fee: t.fee,
+            status: t.status,
+            paymentStatus: t.paymentStatus,
           }))
         );
         setRefreshedTransactions(updatedTransactions);
@@ -352,15 +312,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
       if (data.personalInfoStatus) {
         setPersonalInfoStatus(data.personalInfoStatus);
       }
-      
-      setLoading(true);
-      setLoadingMessage("Loading update...");
-
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setLoading(false);
-        setLoadingMessage(undefined);
-      }, 1000);
     };
 
     // ✅ STEP 5f: Personal Info Changed
@@ -370,8 +321,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
       if (data.status) {
         setPersonalInfoStatus(data.status);
       }
-      setLoading(true);
-      setLoadingMessage("Loading update...");
 
       if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
       refetchTimeoutRef.current = setTimeout(() => {
@@ -383,13 +332,11 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     const handleDisconnect = (reason: string) => {
       console.log("❌ Socket disconnected:", reason);
       setSocketConnected(false);
-      setLoading(false);
     };
 
     // ✅ Error handling
     const handleConnectError = (error: any) => {
       console.error("❌ Connection error:", error);
-      setLoadingMessage("Loading...");
     };
 
     // ✅ Register all listeners
@@ -415,7 +362,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     connectTimeoutRef.current = setTimeout(() => {
       if (!socketConnected) {
         console.error("⏱️ Socket connection timeout");
-        setLoadingMessage("Loading...");
       }
     }, 10000); // 10 second timeout
 
@@ -423,7 +369,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     return () => {
       console.log("🧹 Cleaning up socket");
       
-      if (timerRef.current) clearTimeout(timerRef.current);
       if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
       if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
       
@@ -462,8 +407,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     async (id: number) => {
       try {
         setIsCancelling(true);
-        setLoading(true);
-        setLoadingMessage("Loading...");
 
         await cancelTransactionRequest(id);
         await refetchData("Cancelled!");
@@ -471,14 +414,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
         return true;
       } catch (error: any) {
         console.error('❌ Cancel error:', error);
-        setLoadingMessage("Loading...");
-        
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => {
-          setLoading(false);
-          setLoadingMessage(undefined);
-        }, 1000);
-        
         throw error;
       } finally {
         setIsCancelling(false);
@@ -496,11 +431,7 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     personalInfoStatus,
     queueStatus,
     socketConnected,
-    loading,
-    loadingMessage,
     isCancelling,
-    setLoading,
-    setLoadingMessage,
     GoToHomeStack,
     GoToQueueScreen,
     handleCancelRequest,

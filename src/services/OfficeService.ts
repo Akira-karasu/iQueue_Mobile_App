@@ -1,4 +1,11 @@
 import api from '../api/api-connection';
+import * as FileSystem from 'expo-file-system/legacy';
+
+// ✅ File size constants - Updated to 5MB
+const FILE_SIZE_LIMITS = {
+  MAX_SIZE_MB: 5,
+  MAX_SIZE_BYTES: 5 * 1024 * 1024,
+};
 
 export async function getDocuments() {
     try {
@@ -6,7 +13,7 @@ export async function getDocuments() {
         return response.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || 'Documents unavailable');
-  }
+    }
 }
 
 export async function getPayments() {
@@ -15,7 +22,7 @@ export async function getPayments() {
         return response.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || 'Payments unavailable');
-  }
+    }
 }
 
 export async function submitRequestTransaction(
@@ -23,58 +30,172 @@ export async function submitRequestTransaction(
   requestTransaction: Record<string, any>
 ) {
   try {
+    console.log('📤 Starting submitRequestTransaction...');
+    
     const formData = new FormData();
 
-    // ✅ Append all non-file fields
+    // ✅ Step 1: Append all non-file fields FIRST
+    console.log('📝 Step 1: Appending text fields...');
     Object.entries(requestPersonalInfo).forEach(([key, value]) => {
-      if (key !== 'pictureID' && value !== undefined) {
-        // ✅ Handle boolean specially - send as '1' or '0'
+      // Skip picture field - will handle separately
+      if (key === 'pictureID') {
+        console.log(`  ⏭️  Skipping ${key} - will append as file`);
+        return;
+      }
+
+      // Skip undefined/null
+      if (value === undefined || value === null) {
+        console.log(`  ⏭️  Skipping ${key} - null/undefined`);
+        return;
+      }
+
+      try {
+        // Handle boolean values
         if (typeof value === 'boolean') {
           formData.append(key, value ? '1' : '0');
-        } else if (value !== null) {
-          // ✅ Only append non-null values for non-boolean fields
-          formData.append(key, String(value));
+          console.log(`  ✓ ${key}: ${value ? '1' : '0'} (boolean)`);
+        } else {
+          // Convert all other values to string
+          const stringValue = String(value);
+          formData.append(key, stringValue);
+          console.log(
+            `  ✓ ${key}: ${stringValue.length > 50 ? stringValue.substring(0, 50) + '...' : stringValue}`
+          );
         }
+      } catch (appendError) {
+        console.error(`  ❌ Error appending ${key}:`, appendError);
+        throw appendError;
       }
     });
 
-    // ✅ Append picture file if present
+    // ✅ Step 2: Append picture file AFTER text fields
     if (requestPersonalInfo.pictureID) {
+      console.log('📸 Step 2: Processing picture file...');
+      
       let uri = requestPersonalInfo.pictureID;
+      console.log(`  🔗 Original URI: ${uri}`);
 
-      if (uri.startsWith('file://')) {
-        uri = uri;
-      } else if (!uri.startsWith('content://')) {
+      // ✅ Normalize URI - ensure it starts with file:// or content://
+      if (!uri.startsWith('file://') && !uri.startsWith('content://')) {
         uri = `file://${uri}`;
       }
+      console.log(`  🔗 Normalized URI: ${uri}`);
 
-      const filename = uri.split('/').pop() ?? `upload_${Date.now()}.jpg`;
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      // ✅ Verify file exists
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        if (!fileInfo.exists) {
+          throw new Error(`File not found at: ${uri}`);
+        }
+        const fileSizeMB = (fileInfo.size! / 1024 / 1024).toFixed(2);
+        console.log(`  ✅ File exists - Size: ${fileSizeMB}MB`);
 
-      formData.append('pictureID', {
-        uri,
-        name: filename,
-        type,
-      } as any);
+        // ✅ Check file size (5MB limit) - UPDATED
+        if (fileInfo.size! > FILE_SIZE_LIMITS.MAX_SIZE_BYTES) {
+          throw new Error(
+            `File too large: ${fileSizeMB}MB (max ${FILE_SIZE_LIMITS.MAX_SIZE_MB}MB)`
+          );
+        }
+      } catch (fileError: any) {
+        console.error(`  ❌ File check failed:`, fileError.message);
+        throw fileError;
+      }
+
+      // ✅ Extract filename and MIME type
+      const filename = uri.split('/').pop() || `upload_${Date.now()}.jpg`;
+      const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeType =
+        ext === 'jpg' || ext === 'jpeg'
+          ? 'image/jpeg'
+          : ext === 'png'
+            ? 'image/png'
+            : ext === 'gif'
+              ? 'image/gif'
+              : 'image/jpeg';
+
+      console.log(`  📄 Filename: ${filename}`);
+      console.log(`  🎨 MIME Type: ${mimeType}`);
+
+      // ✅ Append file using React Native FormData format
+      try {
+        formData.append('pictureID', {
+          uri: uri,
+          type: mimeType,
+          name: filename,
+        } as any);
+        console.log(`  ✓ Picture appended successfully`);
+      } catch (fileAppendError) {
+        console.error(`  ❌ Error appending picture:`, fileAppendError);
+        throw fileAppendError;
+      }
+    } else {
+      console.log('⚠️  Step 2: No picture ID provided (optional)');
     }
 
-    // ✅ Append transaction data as JSON
-    formData.append('RequestTransact', JSON.stringify(requestTransaction));
+    // ✅ Step 3: Append transaction data as JSON LAST
+    console.log('📋 Step 3: Appending transaction data...');
+    try {
+      const transactionJson = JSON.stringify(requestTransaction);
+      formData.append('RequestTransact', transactionJson);
+      console.log(`  ✓ Transaction JSON appended (${transactionJson.length} bytes)`);
+      console.log(
+        `  📊 Structure: Registrar=${requestTransaction.RegistrarOffice?.requestList?.length || 0}, Accounting=${requestTransaction.AccountingOffice?.requestList?.length || 0}`
+      );
+    } catch (txnError) {
+      console.error(`  ❌ Error appending transaction:`, txnError);
+      throw txnError;
+    }
 
-    const response = await api.post('office-service/CreateRequestInfo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 10000,
+    // ✅ Step 4: Send request with proper configuration
+    console.log('🚀 Step 4: Sending multipart request to API...');
+    console.log(`  🌐 Endpoint: office-service/CreateRequestInfo`);
+    console.log(`  ⏱️  Timeout: 60000ms`);
+
+    const response = await api.post(
+      'office-service/CreateRequestInfo',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Accept: 'application/json',
+        },
+        timeout: 60000, // ✅ 60 second timeout
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+      }
+    );
+
+    console.log('✅ Upload successful!');
+    console.log('📦 Response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Transaction submission failed');
+    console.error('📋 Error Details:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      code: error.code,
     });
 
-    console.log('✅ Upload successful:', response.data);
-    return response.data;
+    // ✅ Provide helpful error messages
+    let errorMessage = 'Transaction submission failed';
 
-  } catch (error: any) {
-    console.error('❌ Transaction submission failed:', error.response?.data || error);
-    throw new Error(
-      error.response?.data?.message || 'Transaction submission failed'
-    );
+    if (error.response?.status === 400) {
+      errorMessage = `Bad Request: ${error.response?.data?.message || 'Invalid form data'}`;
+    } else if (error.response?.status === 413) {
+      errorMessage = `File too large - try using a smaller image (max ${FILE_SIZE_LIMITS.MAX_SIZE_MB}MB)`;
+    } else if (error.response?.status === 500) {
+      errorMessage = 'Server error - please try again later';
+    } else if (error.message.includes('Network')) {
+      errorMessage = 'Network error - check your connection';
+    } else if (error.message.includes('File not found')) {
+      errorMessage = 'Image file not found. Please select a valid image.';
+    } else if (error.message.includes('File too large')) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
   }
 }
 
@@ -84,13 +205,11 @@ export async function getCurrentRequestTransactions(email: string, bustCache?: b
         
         const response = await api.get('office-service/FindAllUsersWithTransactions', {
             params: { 
-                email,
-                _t: Date.now() // ✅ Always bust cache
+                email
             }
         });
         
         console.log('📦 API Response received');
-        
         return response.data;
         
     } catch (error: any) {
@@ -99,7 +218,6 @@ export async function getCurrentRequestTransactions(email: string, bustCache?: b
     }
 }
 
-// ✅ Cancel all transactions for a personal info
 export async function cancelTransactionRequest(personalInfoId: number) {
     try {
         console.log('🚫 Cancelling all transactions for personal info ID:', personalInfoId);
@@ -109,14 +227,6 @@ export async function cancelTransactionRequest(personalInfoId: number) {
         });
         
         console.log('✅ All transactions cancelled successfully:', response.data);
-        
-        // ✅ Emit socket event for real-time update
-        // const socket = getRequestTransactionProcessSocket();
-        // socket.emit('transactionCancelled', {
-        //     personalInfoId: personalInfoId,
-        //     cancelledAt: new Date().toISOString()
-        // });
-        
         return response.data;
         
     } catch (error: any) {
@@ -129,14 +239,9 @@ export async function getRequestTransactionRequest(personalInfoId: number) {
     try {
         console.log('📡 Fetching request transaction for personalInfoId:', personalInfoId);
         
-        const response = await api.get(`office-service/GetRequestTransaction/${personalInfoId}`, {
-            params: {
-                _t: Date.now() // ✅ Bust cache
-            }
-        });
+        const response = await api.get(`office-service/GetRequestTransaction/${personalInfoId}`);
         
         console.log('📦 Request transaction received:', response.data);
-        
         return response.data;
         
     } catch (error: any) {
@@ -145,19 +250,13 @@ export async function getRequestTransactionRequest(personalInfoId: number) {
     }
 }
 
-// ✅ NEW: Get queue status by personal ID
 export async function getQueueStatusByPersonalId(personalId: number) {
     try {
-        console.log('📡 Fetching queue status for personalId:', personalId);
+        console.log('📡 Fetching queue status for personal ID:', personalId);
         
-        const response = await api.get(`queue-number/status/${personalId}`, {
-            params: {
-                _t: Date.now() // ✅ Bust cache to get real-time status
-            }
-        });
+        const response = await api.get(`queue-number/status/${personalId}`);
         
         console.log('📦 Queue status received:', response.data);
-        
         return response.data;
         
     } catch (error: any) {
@@ -165,33 +264,3 @@ export async function getQueueStatusByPersonalId(personalId: number) {
         throw new Error(error.response?.data?.message || 'Failed to fetch queue status');
     }
 }
-
-// ✅ Alternative: Fetch all data (transactions + queue status together)
-// export async function getRequestTransactionWithQueueStatus(personalInfoId: number) {
-//     try {
-//         console.log('📡 Fetching request transaction & queue status for:', personalInfoId);
-        
-//         const [transactionResponse, queueResponse] = await Promise.all([
-//             api.get(`office-service/GetRequestTransaction/${personalInfoId}`, {
-//                 params: { _t: Date.now() }
-//             }),
-//             api.get(`queue/status/${personalInfoId}`, {
-//                 params: { _t: Date.now() }
-//             })
-//         ]);
-        
-//         console.log('📦 Data received:', {
-//             transactions: transactionResponse.data,
-//             queueStatus: queueResponse.data
-//         });
-        
-//         return {
-//             ...transactionResponse.data,
-//             queueStatus: queueResponse.data
-//         };
-        
-//     } catch (error: any) {
-//         console.error('❌ Fetch error:', error);
-//         throw new Error(error.response?.data?.message || 'Failed to fetch data');
-//     }
-// }

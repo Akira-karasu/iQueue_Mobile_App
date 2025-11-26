@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.iqueue.online';
+const BASE_URL =  'https://api.iqueue.online';
 
 const socketCache = new Map<number, Socket>();
 

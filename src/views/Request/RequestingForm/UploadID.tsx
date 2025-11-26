@@ -15,7 +15,7 @@ export type RequestFormProps = {
   steps: number;
 };
 
-// ✅ Image size policy constants (in MB)
+// ✅ Image size policy constants (in MB) - Updated to 5MB
 const IMAGE_SIZE_POLICY = {
   MAX_SIZE_MB: 5,
   MAX_SIZE_BYTES: 5 * 1024 * 1024,
@@ -23,11 +23,11 @@ const IMAGE_SIZE_POLICY = {
   MIN_SIZE_MB: 0.1,
 };
 
-// ✅ Image compression settings
+// ✅ Image compression settings - Less aggressive for 5MB
 const COMPRESSION_SETTINGS = {
-  MAX_WIDTH: 1024,
-  MAX_HEIGHT: 1024,
-  COMPRESSION_QUALITY: 0.7, // 70% quality
+  MAX_WIDTH: 1200,
+  MAX_HEIGHT: 1200,
+  COMPRESSION_QUALITY: 0.7, // ✅ 70% quality (less aggressive)
 };
 
 export default function UploadID({ setSteps, steps }: RequestFormProps) {

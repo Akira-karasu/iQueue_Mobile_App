@@ -21,7 +21,7 @@ export default function ProfileScreen() {
         <View style={style.profileContainer}>
           <Image source={require('../../../assets/icons/boy.png')} style={style.Profileimage}/>
           <View>
-            <Text style={style.userName}>Jose P. Rizal</Text>
+            <Text style={style.userName}>Mobile user</Text>
             <Text style={style.userId}>ID: 31245433</Text>
           </View>
           <View style={style.containerButton}>
@@ -32,12 +32,12 @@ export default function ProfileScreen() {
                 <Image source={require('../../../assets/icons/profileCirc.png')} style={style.iconImage} />
                 <Text style={style.pressableText}>Account Settings</Text>
              </Pressable>
-             <Pressable 
+             {/* <Pressable 
                style={style.pressableButton}
                onPress={() => onGoToAppSettings()}>
                 <Image source={require('../../../assets/icons/settingsCirc.png')} style={style.iconImage} />
                 <Text style={style.pressableText}>App Settings</Text>
-             </Pressable>
+             </Pressable> */}
              <Pressable style={style.pressableButton} onPress={() => logout()}>
                 <Image source={require('../../../assets/icons/LogoutCirc.png')} style={style.iconImage} />
                 <Text style={style.pressableText}>Logout</Text>

@@ -2,7 +2,6 @@ import Button from "@/src/components/buttons/Button";
 import IconButton from "@/src/components/buttons/IconButton";
 import Card from "@/src/components/cards/Card";
 import TransactionStatus from "@/src/components/layout/TransactionStatus";
-import LoadingOverlay from "@/src/components/LoadingOverlay/loadingOverlay.";
 import CancelRequestTransaction from "@/src/components/modals/CancelRequestTransaction";
 import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransaction";
 import useModal from "@/src/hooks/componentHooks/useModal";
@@ -25,8 +24,6 @@ export default function RequestTransaction() {
   const { 
     GoToHomeStack, 
     GoToQueueScreen, 
-    loading, 
-    loadingMessage,
     transactionStatus,
     personalInfoStatus,
     handleCancelRequest,
@@ -162,8 +159,6 @@ export default function RequestTransaction() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <LoadingOverlay visible={loading} message={loadingMessage} size="large" color="#19AF5B" />
-
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
