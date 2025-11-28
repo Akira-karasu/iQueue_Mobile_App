@@ -1,169 +1,114 @@
-import Button from '@/src/components/buttons/Button';
-import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransaction";
-import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import Modals from './Modal';
+import Button from "@/src/components/buttons/Button";
+import React, { useState } from "react";
+import { ActivityIndicator, Modal, StyleSheet, Text, View } from "react-native";
 
 interface CancelRequestTransactionProps {
   visible: boolean;
   onClose: () => void;
-  transaction: any; // Replace 'any' with your actual transaction type if available
+  transaction: any;
+  onCancel: (id: number) => Promise<boolean>; // ✅ Receive as prop
+  isCancelling: boolean; // ✅ Receive as prop
 }
 
-
-export default function CancelRequestTransaction({ 
-  visible, 
+export default function CancelRequestTransaction({
+  visible,
   onClose,
-  transaction 
+  transaction,
+  onCancel,
+  isCancelling,
 }: CancelRequestTransactionProps) {
-  const { handleCancelRequest, GoToHomeStack, isCancelling } = 
-    useRequestTransaction(transaction?.transactions || [], transaction?.personalInfo?.id);
-  
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const onConfirmCancel = async () => {
+  const handleCancel = async () => {
     try {
-      setError("");
+      setError(null);
+      const result = await onCancel(transaction.personalInfo.id);
       
-      // ✅ Validate transaction ID exists
-      if (!transaction?.personalInfo?.id) {
-        setError("Invalid transaction data");
-        return;
+      if (result) {
+        console.log("✅ Request cancelled successfully");
+        onClose();
       }
-      
-      await handleCancelRequest(transaction.personalInfo.id);
-      
-      // ✅ Close modal and navigate
-      onClose();
-      GoToHomeStack();
-      
-    } catch (error: any) {
-      console.error('❌ Cancel error:', error);
-      setError(error.message || 'Failed to cancel request');
+    } catch (err: any) {
+      console.error("❌ Cancel failed:", err);
+      setError(err.message || "Failed to cancel request");
     }
   };
 
   return (
-    <Modals visible={visible} onClose={onClose}>
-      <View style={styles.container}>
-        
-        {/* ✅ Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Cancel Request</Text>
-          <Text style={styles.subtitle}>
-            Are you sure you want to cancel this request?
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Cancel Request?</Text>
+          <Text style={styles.message}>
+            Are you sure you want to cancel this request? This action cannot be undone.
           </Text>
-        </View>
 
-        {/* ✅ Warning Message */}
-        {/* <View style={styles.warningBox}>
-          <Text style={styles.warningText}>
-            ⚠️ This action cannot be undone. All transactions will be cancelled.
-          </Text>
-        </View> */}
+          {error && <Text style={styles.errorText}>{error}</Text>}
 
-        {/* ✅ Error Message */}
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>❌ {error}</Text>
+          <View style={styles.buttonContainer}>
+            <Button
+              title="Keep Request"
+              onPress={onClose}
+              disabled={isCancelling}
+              style={styles.button}
+            />
+            <Button
+              title={isCancelling ? "Cancelling..." : "Cancel Request"}
+              onPress={handleCancel}
+              disabled={isCancelling}
+              style={[styles.button, styles.dangerButton]}
+            />
           </View>
-        ) : null}
 
-        {/* ✅ Loading Indicator */}
-        {isCancelling && (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="small" color="#d32f2f" />
-            <Text style={styles.loadingText}>Cancelling request...</Text>
-          </View>
-        )}
-
-        {/* ✅ Action Buttons */}
-        <View style={styles.buttonContainer}>
-          <Button 
-            title={isCancelling ? "Cancelling..." : "Confirm Cancel"}
-            onPress={onConfirmCancel}
-            disabled={isCancelling}
-            fontSize={16}
-            width="100%"
-            style={{ backgroundColor: isCancelling ? "#ccc" : "#d32f2f" }}
-          />
-          <Button 
-            title="Go Back"
-            onPress={onClose}
-            disabled={isCancelling}
-            fontSize={16}
-            width="100%"
-            style={{ backgroundColor: "#19AF5B" }}
-          />
+          {isCancelling && <ActivityIndicator size="large" color="#19AF5B" />}
         </View>
       </View>
-    </Modals>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    alignItems: 'stretch',
-    justifyContent: 'center',
-    gap: 15,
-    width: '90%',
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 10,
+  container: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 20,
+    width: "80%",
+    gap: 15,
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#d32f2f',
-    marginBottom: 5,
+    fontWeight: "700",
+    color: "#222",
   },
-  subtitle: {
+  message: {
     fontSize: 14,
-    color: '#555',
-    textAlign: 'center',
-  },
-  warningBox: {
-    backgroundColor: '#fff3cd',
-    borderLeftWidth: 4,
-    borderLeftColor: '#ff6f00',
-    padding: 10,
-    borderRadius: 4,
-  },
-  warningText: {
-    fontSize: 13,
-    color: '#856404',
-    fontWeight: '600',
-  },
-  errorBox: {
-    backgroundColor: '#ffebee',
-    borderLeftWidth: 4,
-    borderLeftColor: '#d32f2f',
-    padding: 10,
-    borderRadius: 4,
+    color: "#666",
+    lineHeight: 20,
   },
   errorText: {
-    fontSize: 13,
-    color: '#c62828',
-    fontWeight: '600',
-  },
-  loadingBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#d32f2f',
-    fontWeight: '600',
+    color: "#d32f2f",
+    fontSize: 12,
+    fontWeight: "600",
   },
   buttonContainer: {
+    flexDirection: "row",
     gap: 10,
-    marginTop: 10,
+  },
+  button: {
+    flex: 1,
+  },
+  dangerButton: {
+    backgroundColor: "#d32f2f",
   },
 });

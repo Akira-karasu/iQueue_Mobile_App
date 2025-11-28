@@ -201,6 +201,7 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
       reconnectAttemptRef.current = 0;
       setSocketConnected(true);
       
+      // ✅ STEP 3: Emit joinUserRoom WITHOUT email
       console.log("📤 STEP 3: Emitting joinUserRoom with personalInfoId:", personalInfoId);
       socket.emit('joinUserRoom', { personalInfoId });
     };
@@ -314,9 +315,22 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
       }
     };
 
-    // ✅ STEP 5f: Personal Info Changed
+    // ✅ STEP 5f: Queue Status Updated - REAL-TIME
+    const handleQueueStatusUpdated = (data: any) => {
+      console.log("📡 STEP 5f: Queue status updated:", data);
+      setQueueStatus({
+        queueNumber: data.queueNumber,
+        status: data.status,
+        position: data.position,
+        office: data.office,
+        estimatedTime: data.estimatedTime,
+        timestamp: data.timestamp,
+      });
+    };
+
+    // ✅ STEP 5g: Personal Info Changed
     const handlePersonalInfoChanged = (data: any) => {
-      console.log("📡 STEP 5f: PersonalInfo changed:", data);
+      console.log("📡 STEP 5g: PersonalInfo changed:", data);
       
       if (data.status) {
         setPersonalInfoStatus(data.status);
@@ -348,6 +362,7 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     socket.on('singleTransactionUpdated', handleSingleTransactionUpdated);
     socket.on('paymentStatusChanged', handlePaymentStatusChanged);
     socket.on('allTransactionsUpdated', handleAllTransactionsUpdated);
+    socket.on('queueStatusUpdated', handleQueueStatusUpdated);
     socket.on('personalInfoChanged', handlePersonalInfoChanged);
     socket.on("disconnect", handleDisconnect);
     socket.on("connect_error", handleConnectError);
@@ -381,6 +396,7 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
       socket.off('singleTransactionUpdated', handleSingleTransactionUpdated);
       socket.off('paymentStatusChanged', handlePaymentStatusChanged);
       socket.off('allTransactionsUpdated', handleAllTransactionsUpdated);
+      socket.off('queueStatusUpdated', handleQueueStatusUpdated);
       socket.off('personalInfoChanged', handlePersonalInfoChanged);
       socket.off("connect_error", handleConnectError);
       
@@ -422,6 +438,12 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     [refetchData]
   );
 
+    // ✅ PUBLIC REFETCH FUNCTION - Exposed for external calls
+  const refetch = useCallback(async () => {
+    console.log("🔄 Refetch called from component");
+    await refetchData("Manual refresh");
+  }, [refetchData]);
+
   return {
     groupedTransactions,
     activeTransactions,
@@ -438,5 +460,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     refetchData,
     updateSingleTransaction,
     fetchQueueStatus,
+    refetch,
   };
 };

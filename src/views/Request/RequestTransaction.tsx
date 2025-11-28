@@ -7,8 +7,8 @@ import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransac
 import useModal from "@/src/hooks/componentHooks/useModal";
 import { RequestStackParamList } from "@/src/types/navigation";
 import { RouteProp, useRoute } from "@react-navigation/native";
-import React, { useMemo } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type TransactionRouteProp = RouteProp<RequestStackParamList, "Transaction">;
@@ -18,6 +18,7 @@ export default function RequestTransaction() {
   const { transaction: initialTransaction } = params;
 
   const { visible, open, close } = useModal();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const personalInfoId = initialTransaction?.personalInfo?.id;
 
@@ -27,8 +28,28 @@ export default function RequestTransaction() {
     transactionStatus,
     personalInfoStatus,
     handleCancelRequest,
-    activeTransactions
+    activeTransactions,
+    isCancelling,
+    refetch, // ✅ Get refetch function
   } = useRequestTransaction(initialTransaction.transactions, personalInfoId);
+
+  // ✅ HANDLE REFRESH - Pull-to-refresh handler with proper async handling
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      console.log("🔄 Starting refresh...");
+      
+      if (refetch) {
+        const result = await refetch(); // ✅ Wait for refetch to complete
+        console.log("✅ Refresh completed with result:", result);
+      }
+    } catch (error) {
+      console.error('❌ Refresh Error:', error);
+    } finally {
+      setIsRefreshing(false);
+      console.log("✅ Refresh finished");
+    }
+  }, [refetch]);
 
   // ✅ Split activeTransactions by type
   const requestDocuments = useMemo(() => 
@@ -72,7 +93,7 @@ export default function RequestTransaction() {
       : "Not Fully Paid";
   const summaryStatusColor = allCancelled ? "#d32f2f" : allNonCancelledPaid ? "#19AF5B" : "#ff6f00";
 
-  // ✅ REMOVED useMemo - use value directly for real-time updates
+  // ✅ Use value directly for real-time updates
   const currentPersonalInfoStatus = personalInfoStatus || initialTransaction.personalInfo.status;
 
   console.log("📊 Current Status (Direct):", {
@@ -83,13 +104,13 @@ export default function RequestTransaction() {
     timestamp: new Date().toLocaleTimeString()
   });
 
-  // ✅ Check if personalInfo status is pending - NO useMemo
+  // ✅ Check if personalInfo status is pending
   const isPersonalInfoPending = currentPersonalInfoStatus?.toLowerCase() === "pending";
 
-  // ✅ Check if personalInfo status is cancelled - NO useMemo
+  // ✅ Check if personalInfo status is cancelled
   const isPersonalInfoCancelled = currentPersonalInfoStatus?.toLowerCase() === "cancelled";
 
-  // ✅ Get transaction and payment statuses - NO useMemo, use IIFE
+  // ✅ Get transaction and payment statuses
   const transactionStatusSummary = (() => {
     if (activeTransactions.length === 0) return "No Transactions";
     
@@ -116,7 +137,7 @@ export default function RequestTransaction() {
     return "Partially Paid";
   })();
 
-  // ✅ QR Button: Show if there are ready-for-release or pending unpaid documents, AND status is NOT pending/cancelled
+  // ✅ QR Button: Show if there are ready-for-release or pending unpaid documents
   const shouldShowQRButton = useMemo(() => {
     const hasReadyForRelease = requestDocuments.some(d => d.status?.toLowerCase() === "ready-for-release");
     const hasPendingUnpaid = requestDocuments.some(d => 
@@ -166,7 +187,19 @@ export default function RequestTransaction() {
           <Text style={styles.headerTitle}>Request Transaction Details</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView 
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor="#19AF5B"
+              titleColor="#19AF5B"
+              title="Pull to refresh"
+              progressBackgroundColor="#fff"
+            />
+          }
+        >
           {/* Transaction Status & Buttons */}
           <View style={styles.statusContainer}>
             <TransactionStatus
@@ -310,7 +343,13 @@ export default function RequestTransaction() {
         </ScrollView>
 
         {/* Cancel Modal */}
-        <CancelRequestTransaction visible={visible} onClose={close} transaction={initialTransaction} />
+        <CancelRequestTransaction 
+          visible={visible} 
+          onClose={close} 
+          transaction={initialTransaction}
+          onCancel={handleCancelRequest}
+          isCancelling={isCancelling}
+        />
       </View>
     </SafeAreaView>
   );

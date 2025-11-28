@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 
-const BASE_URL =  'https://api.iqueue.online';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.iqueue.online';
 
 const socketCache = new Map<number, Socket>();
 
@@ -11,15 +11,17 @@ let notificationSocket: Socket | undefined;
 export function getTransactionRecordSocket(email: string): Socket {
   if (!transactionRecordSocket) {
     transactionRecordSocket = io(`${BASE_URL}/transactionRecord`, {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       query: { email },
     });
   }
   return transactionRecordSocket;
 }
 
-// ✅ FIXED: Use BASE_URL instead of localhost
-export function getRequestTransactionProcessSocket(personalId: number): Socket {
+// ✅ FIXED: Join user room after connecting
+export function getRequestTransactionProcessSocket(
+  personalId: number,
+): Socket {
   // ✅ If socket already exists for this personalId, return it
   if (socketCache.has(personalId)) {
     const existingSocket = socketCache.get(personalId)!;
@@ -38,12 +40,19 @@ export function getRequestTransactionProcessSocket(personalId: number): Socket {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     reconnectionAttempts: 5,
-    transports: ["websocket", "polling"], // ✅ Add polling as fallback
+    transports: ["websocket", "polling"],
   });
 
-  // ✅ Debug logging
+  // ✅ On connection, join user room
   socket.on("connect", () => {
     console.log("✅ RequestTransactionProcess socket connected:", socket.id);
+    
+    // ✅ Join user's personal room
+    socket.emit("joinUserRoom", {
+      personalInfoId: personalId,
+    });
+    
+    console.log("📍 Joined room: user-" + personalId);
   });
 
   socket.on("connect_error", (error) => {
@@ -54,13 +63,34 @@ export function getRequestTransactionProcessSocket(personalId: number): Socket {
     console.log("❌ RequestTransactionProcess disconnected:", reason);
   });
 
+  // ✅ Listen for real-time updates
+  socket.on("singleTransactionUpdated", (data) => {
+    console.log("📡 Single transaction updated:", data);
+  });
+
+  socket.on("allTransactionsUpdated", (data) => {
+    console.log("📡 All transactions updated:", data);
+  });
+
+  socket.on("queueStatusUpdated", (data) => {
+    console.log("📡 Queue status updated:", data);
+  });
+
+  socket.on("walkinStatusUpdated", (data) => {
+    console.log("📡 Walkin status updated:", data);
+  });
+
+  socket.on("personalInfoStatusUpdated", (data) => {
+    console.log("📡 Personal info status updated:", data);
+  });
+
   // ✅ Cache it
   socketCache.set(personalId, socket);
 
   return socket;
 }
 
-// ✅ IMPORTANT: Clear socket from cache when disconnecting
+// ✅ Clear socket from cache when disconnecting
 export function disconnectRequestTransactionProcessSocket(personalId: number): void {
   const socket = socketCache.get(personalId);
   if (socket) {
@@ -81,7 +111,9 @@ export function disconnectAllSockets(): void {
 
 export function getNotificationSocket(): Socket {
   if (!notificationSocket) {
-    notificationSocket = io(`${BASE_URL}/notification`, { transports: ['websocket'] });
+    notificationSocket = io(`${BASE_URL}/notification`, {
+      transports: ['websocket', 'polling'],
+    });
   }
   return notificationSocket;
 }

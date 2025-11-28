@@ -160,7 +160,6 @@ const handleSubmitTransaction = React.useCallback(
         RequestTransaction: updatedTransactions,
       }));
 
-      close();
 
       console.log('📤 Submitting transaction...');
       const response = await submitRequestTransaction(formData, updatedTransactions);

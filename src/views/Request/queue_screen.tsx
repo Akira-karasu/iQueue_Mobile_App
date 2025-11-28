@@ -3,8 +3,8 @@ import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransac
 import { RequestStackParamList } from '@/src/types/navigation';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useMemo } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -16,7 +16,11 @@ export default function QueueScreen() {
   const { queueData } = params;
 
   const personalInfoId = queueData.personalInfo.id;
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [isLoadingQueue, setIsLoadingQueue] = useState(true);
 
+  // ✅ Get real-time data from socket
   const {
     activeTransactions,
     queueStatus,
@@ -24,32 +28,61 @@ export default function QueueScreen() {
     personalInfoStatus,
   } = useRequestTransaction(queueData.transactions, personalInfoId);
 
-  console.log('📋 Real-time Queue Data:', {
-    socketConnected,
-    queueStatus,
-    activeTransactionsCount: activeTransactions.length,
-    personalInfoStatus,
-    timestamp: new Date().toLocaleTimeString()
-  });
+  // ✅ MONITOR QUEUE STATUS CHANGES - Real-time updates
+  useEffect(() => {
+    if (queueStatus) {
+      console.log('📡 Queue Status Changed:', {
+        queueNumber: queueStatus.queueNumber,
+        status: queueStatus.status,
+        position: queueStatus.position,
+        office: queueStatus.office,
+        timestamp: new Date().toLocaleTimeString()
+      });
+      
+      setIsUpdating(true);
+      setLastUpdate(new Date().toLocaleTimeString());
+      setIsLoadingQueue(false);
+      
+      // Show update indicator for 1 second
+      const timer = setTimeout(() => setIsUpdating(false), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [queueStatus]);
 
-    // ✅ OPTION 1: Navigate to RequestTransaction screen
+  // ✅ TIMEOUT - If no queue status after 8 seconds, stop loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!queueStatus) {
+        setIsLoadingQueue(false);
+      }
+    }, 8000);
+
+    return () => clearTimeout(timeout);
+  }, [queueStatus]);
+
   const goBack = () => {
     navigation.navigate('Transaction', { transaction: queueData });
   };
 
-  const VALID_QUEUE_STATUSES = ['waiting', 'pending', 'in-process', 'on-hold', 'called'];
-  
-  const hasValidQueueStatus = queueStatus && 
+  // ✅ LOGIC: Check if we have valid queue status
+  const hasValidQueueStatus = useMemo(() => 
+    queueStatus && 
     Object.keys(queueStatus).length > 0 &&
-    VALID_QUEUE_STATUSES.includes(queueStatus.status?.toLowerCase());
+    queueStatus.queueNumber &&
+    queueStatus.status,
+    [queueStatus]
+  );
 
-  console.log('🔍 Queue Status Check:', {
-    hasQueueStatus: !!queueStatus,
-    statusKeys: queueStatus ? Object.keys(queueStatus) : [],
-    queueStatusValue: queueStatus?.status,
-    hasValidQueueStatus,
-  });
+  const VALID_QUEUE_STATUSES = ['waiting', 'pending', 'in-process', 'on-hold', 'called'];
+  const isValidStatus = useMemo(() =>
+    queueStatus?.status && 
+    VALID_QUEUE_STATUSES.includes(queueStatus.status.toLowerCase()),
+    [queueStatus]
+  );
 
+  // ✅ LOGIC: Filter transactions by status and type
+
+  // SECTION 1: STATUS-BASED (Ready for Release, Claimed/Completed)
   const readyForReleaseDocuments = useMemo(() =>
     activeTransactions.filter(
       (transaction: any) => 
@@ -60,12 +93,30 @@ export default function QueueScreen() {
     [activeTransactions]
   );
 
+  const claimedDocuments = useMemo(() =>
+    activeTransactions.filter(
+      (transaction: any) => 
+        transaction.transactionType === "Request Document" && 
+        transaction.status?.toLowerCase() === "completed"
+    ),
+    [activeTransactions]
+  );
+
+  // ✅ Check if there are ready-for-release or completed documents
+  const hasStatusBasedDocuments = useMemo(() =>
+    readyForReleaseDocuments.length > 0 || claimedDocuments.length > 0,
+    [readyForReleaseDocuments, claimedDocuments]
+  );
+
+  // SECTION 2: PAYMENT-BASED (Unpaid, Paid, Cancelled)
   const unpaidDocuments = useMemo(() =>
     activeTransactions.filter(
       (transaction: any) => 
         transaction.transactionType === "Request Document" && 
         transaction.paymentStatus?.toLowerCase() === "unpaid" &&
-        transaction.status?.toLowerCase() !== "cancelled"
+        transaction.status?.toLowerCase() !== "cancelled" &&
+        transaction.status?.toLowerCase() !== "ready-for-release" &&
+        transaction.status?.toLowerCase() !== "completed"
     ),
     [activeTransactions]
   );
@@ -85,7 +136,9 @@ export default function QueueScreen() {
       (transaction: any) => 
         transaction.transactionType === "Request Document" && 
         transaction.paymentStatus?.toLowerCase() === "paid" &&
-        transaction.status?.toLowerCase() !== "cancelled"
+        transaction.status?.toLowerCase() !== "cancelled" &&
+        transaction.status?.toLowerCase() !== "ready-for-release" &&
+        transaction.status?.toLowerCase() !== "completed"
     ),
     [activeTransactions]
   );
@@ -96,24 +149,6 @@ export default function QueueScreen() {
         transaction.transactionType === "Payment" && 
         transaction.paymentStatus?.toLowerCase() === "paid" &&
         transaction.status?.toLowerCase() !== "cancelled"
-    ),
-    [activeTransactions]
-  );
-
-  const completedDocuments = useMemo(() =>
-    activeTransactions.filter(
-      (transaction: any) => 
-        transaction.transactionType === "Request Document" && 
-        transaction.status?.toLowerCase() === "completed"
-    ),
-    [activeTransactions]
-  );
-
-  const completedPayments = useMemo(() =>
-    activeTransactions.filter(
-      (transaction: any) => 
-        transaction.transactionType === "Payment" && 
-        transaction.status?.toLowerCase() === "completed"
     ),
     [activeTransactions]
   );
@@ -136,797 +171,669 @@ export default function QueueScreen() {
     [activeTransactions]
   );
 
-  const completedTransactions = useMemo(() =>
+  // SECTION 3: COMPLETED (for summary only)
+  const completedDocuments = useMemo(() =>
     activeTransactions.filter(
       (transaction: any) => 
-        transaction.paymentStatus?.toLowerCase() === "paid" &&
-        transaction.status?.toLowerCase() === "cancelled"
+        transaction.transactionType === "Request Document" && 
+        transaction.status?.toLowerCase() === "completed"
     ),
     [activeTransactions]
   );
 
-  const isAllTransactionsCompleted = useMemo(() => {
-    if (activeTransactions.length === 0) return false;
-    return activeTransactions.every(t => 
-      t.paymentStatus?.toLowerCase() === "paid" && 
-      t.status?.toLowerCase() === "cancelled"
-    );
-  }, [activeTransactions]);
+  const completedPayments = useMemo(() =>
+    activeTransactions.filter(
+      (transaction: any) => 
+        transaction.transactionType === "Payment" && 
+        transaction.status?.toLowerCase() === "completed"
+    ),
+    [activeTransactions]
+  );
 
-  const isQueueStatusCompleted = useMemo(() => {
-    return queueStatus && 
-      queueStatus.status?.toLowerCase() === 'completed';
-  }, [queueStatus]);
+  // ✅ LOGIC: Calculate totals - Exclude paid/cancelled if status-based documents exist
+  const calculateTotal = (documents: any[], payments: any[]) => {
+    const docTotal = documents.reduce((sum, doc) => {
+      const fee = parseFloat(doc.fee) || 0;
+      const copies = doc.copies || 1;
+      return sum + (fee * copies);
+    }, 0);
 
-  const isAllTransactionsPaidOrCancelled = useMemo(() => {
-    if (activeTransactions.length === 0) return false;
-    return activeTransactions.every(t => 
+    const paymentTotal = payments.reduce((sum, pay) => {
+      return sum + (parseFloat(pay.fee) || 0);
+    }, 0);
+
+    return docTotal + paymentTotal;
+  };
+
+  const totalUnpaid = useMemo(() => calculateTotal(unpaidDocuments, unpaidPayments), [unpaidDocuments, unpaidPayments]);
+  const totalPaid = useMemo(() => calculateTotal(paidDocuments, paidPayments), [paidDocuments, paidPayments]);
+  const totalCompleted = useMemo(() => calculateTotal(completedDocuments, completedPayments), [completedDocuments, completedPayments]);
+  const totalCancelled = useMemo(() => calculateTotal(cancelledDocuments, cancelledPayments), [cancelledDocuments, cancelledPayments]);
+
+  // ✅ LOGIC: Check status conditions
+  const hasReadyForReleaseDocuments = readyForReleaseDocuments.length > 0;
+  const hasClaimedDocuments = claimedDocuments.length > 0;
+  const isQueueStatusCompleted = queueStatus?.status?.toLowerCase() === 'completed';
+  const isAllTransactionsPaidOrCancelled = activeTransactions.length > 0 && 
+    activeTransactions.every(t => 
       t.paymentStatus?.toLowerCase() === "paid" || 
       t.status?.toLowerCase() === "cancelled"
     );
-  }, [activeTransactions]);
-
-  const hasReadyForReleaseDocuments = useMemo(() => {
-    return readyForReleaseDocuments.length > 0;
-  }, [readyForReleaseDocuments]);
-
-  // ✅ REMOVED: All auto-navigation logic
-  // Users must manually tap the back button
-  // Banners and notes will display without redirecting
-
-  const totalUnpaid = useMemo(() => {
-    const docTotal = unpaidDocuments.reduce((sum, doc) => {
-      const fee = parseFloat(doc.fee) || 0;
-      const copies = doc.copies || 1;
-      return sum + (fee * copies);
-    }, 0);
-
-    const paymentTotal = unpaidPayments.reduce((sum, pay) => {
-      return sum + (parseFloat(pay.fee) || 0);
-    }, 0);
-
-    return docTotal + paymentTotal;
-  }, [unpaidDocuments, unpaidPayments]);
-
-  const totalPaid = useMemo(() => {
-    const docTotal = paidDocuments.reduce((sum, doc) => {
-      const fee = parseFloat(doc.fee) || 0;
-      const copies = doc.copies || 1;
-      return sum + (fee * copies);
-    }, 0);
-
-    const paymentTotal = paidPayments.reduce((sum, pay) => {
-      return sum + (parseFloat(pay.fee) || 0);
-    }, 0);
-
-    return docTotal + paymentTotal;
-  }, [paidDocuments, paidPayments]);
-
-  const totalCompleted = useMemo(() => {
-    const docTotal = completedDocuments.reduce((sum, doc) => {
-      const fee = parseFloat(doc.fee) || 0;
-      const copies = doc.copies || 1;
-      return sum + (fee * copies);
-    }, 0);
-
-    const paymentTotal = completedPayments.reduce((sum, pay) => {
-      return sum + (parseFloat(pay.fee) || 0);
-    }, 0);
-
-    return docTotal + paymentTotal;
-  }, [completedDocuments, completedPayments]);
-
-  const totalCancelled = useMemo(() => {
-    const docTotal = cancelledDocuments.reduce((sum, doc) => {
-      const fee = parseFloat(doc.fee) || 0;
-      const copies = doc.copies || 1;
-      return sum + (fee * copies);
-    }, 0);
-
-    const paymentTotal = cancelledPayments.reduce((sum, pay) => {
-      return sum + (parseFloat(pay.fee) || 0);
-    }, 0);
-
-    return docTotal + paymentTotal;
-  }, [cancelledDocuments, cancelledPayments]);
 
   const qrData = JSON.stringify({
     code: queueData.personalInfo.transactionCode
   });
 
+  // ✅ LOGIC: Get status color based on queue status
   const getStatusColor = (status: string | undefined): string => {
     if (!status) return '#666';
-    switch (status.toLowerCase()) {
-      case 'waiting':
-        return '#FFA500';
-      case 'pending':
-        return '#FFD700';
-      case 'in-process':
-        return '#4A90E2';
-      case 'called':
-        return '#FF6B6B';
-      case 'on-hold':
-        return '#FFD700';
-      case 'completed':
-        return '#19AF5B';
-      default:
-        return '#666';
-    }
+    const statusMap: Record<string, string> = {
+      'waiting': '#FFA500',
+      'pending': '#FFD700',
+      'in-process': '#4A90E2',
+      'called': '#FF6B6B',
+      'on-hold': '#FFD700',
+      'completed': '#19AF5B',
+    };
+    return statusMap[status.toLowerCase()] || '#666';
   };
+
+  // ✅ LOGIC: Get position display text
+  const getPositionDisplay = (position: number | undefined): string => {
+    if (!position && position !== 0) return '-';
+    if (position === 0) return '🟢 ON GOING';
+    if (position === 1) return '🔴 NEXT';
+    return `#${position}`;
+  };
+
+  // ✅ LOGIC: Get transaction item count
+  const getTransactionCount = (...arrays: any[][]): number => 
+    arrays.reduce((sum, arr) => sum + arr.length, 0);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.container}>
+        {/* HEADER */}
         <View style={styles.header}>
           <IconButton
             onPress={goBack}
             icon={require("../../../assets/icons/ArrowBack.png")}
           />
           <Text style={styles.headerTitle}>Queue Transaction</Text>
-          <View 
-            style={[
-              styles.socketIndicator, 
-              { backgroundColor: socketConnected ? "#19AF5B" : "#ff6f00" }
-            ]} 
-            title={socketConnected ? "Connected" : "Disconnected"}
-          />
+          
+          {/* Connection Status Indicator */}
+          <View style={[
+            styles.socketIndicator, 
+            { backgroundColor: socketConnected ? "#19AF5B" : "#ff6f00" }
+          ]} />
+          
+          {/* Updating Indicator */}
+          {isUpdating && (
+            <ActivityIndicator 
+              size="small" 
+              color="#19AF5B" 
+              style={{ marginLeft: 8 }}
+            />
+          )}
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
 
-          {/* ✅ NEW: Ready-for-Release Documents Banner - NO AUTO REDIRECT */}
-          {hasReadyForReleaseDocuments && readyForReleaseDocuments.length > 0 && (
-            <View style={styles.readyForReleaseBanner}>
-              <Text style={styles.readyForReleaseIcon}>📋</Text>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.readyForReleaseTitle}>Documents Ready for Release!</Text>
-                <Text style={styles.readyForReleaseSubtitle}>
-                  Your {readyForReleaseDocuments.length} document{readyForReleaseDocuments.length > 1 ? 's are' : ' is'} now ready to be picked up.
+          {/* ✅ LOADING SCREEN - Waiting for queue status */}
+          {isLoadingQueue && !hasValidQueueStatus ? (
+            <View style={styles.loadingContainer}>
+              <View style={styles.loadingContent}>
+                <View style={styles.loadingSpinner}>
+                  <ActivityIndicator 
+                    size="large" 
+                    color="#19AF5B" 
+                  />
+                </View>
+
+                <Text style={styles.loadingTitle}>Getting Your Queue</Text>
+                <Text style={styles.loadingSubtitle}>
+                  Please wait while we assign you a queue number...
                 </Text>
+
+                {/* Status dot */}
+                <View style={styles.statusIndicatorContainer}>
+                  <View style={[
+                    styles.statusDot,
+                    { backgroundColor: socketConnected ? '#19AF5B' : '#ff6f00' }
+                  ]} />
+                  <Text style={[
+                    styles.statusText,
+                    { color: socketConnected ? '#19AF5B' : '#ff6f00' }
+                  ]}>
+                    {socketConnected ? 'Connected' : 'Connecting...'}
+                  </Text>
+                </View>
+
+                {/* Transaction Code Display */}
+                <View style={styles.codeContainer}>
+                  <Text style={styles.codeLabel}>Your Transaction Code</Text>
+                  <Text style={styles.code}>{queueData.personalInfo.transactionCode}</Text>
+                </View>
+
+                {/* Tips */}
+                <View style={styles.tipContainer}>
+                  <Text style={styles.tipIcon}>💡</Text>
+                  <Text style={styles.tipText}>
+                    Keep this screen open to receive your queue number
+                  </Text>
+                </View>
               </View>
             </View>
-          )}
-
-
-          {/* ✅ NEW: Queue Completed Banner - NO AUTO REDIRECT */}
-          {isQueueStatusCompleted && !hasReadyForReleaseDocuments && (
-            <View style={styles.queueCompletedBanner}>
-              <Text style={styles.queueCompletedIcon}>🎉</Text>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.queueCompletedTitle}>Queue Completed!</Text>
-                <Text style={styles.queueCompletedSubtitle}>
-                  Your transaction has been processed.
-                </Text>
-              </View>
-            </View>
-          )}
-
-            {/* ✅ NEW: All Transactions Completed Banner - NO AUTO REDIRECT */}
-          {isAllTransactionsPaidOrCancelled && activeTransactions.length > 0 && !hasReadyForReleaseDocuments && (
-            <View style={styles.allTransactionsCompletedBanner}>
-              <Text style={styles.allTransactionsCompletedIcon}>✅</Text>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.allTransactionsCompletedTitle}>Payment Completed!</Text>
-                <Text style={styles.allTransactionsCompletedSubtitle}>
-                  All transactions have been paid
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* ✅ Transaction Completed Banner - NO AUTO REDIRECT */}
-          {/* {isAllTransactionsCompleted && completedTransactions.length > 0 && !isQueueStatusCompleted && !isAllTransactionsPaidOrCancelled && !hasReadyForReleaseDocuments && (
-            <View style={styles.completedBanner}>
-              <Text style={styles.completedBannerIcon}>✅</Text>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.completedBannerTitle}>Transaction Completed</Text>
-                <Text style={styles.completedBannerSubtitle}>
-                  All items have been paid and processed. Thank you!
-                </Text>
-              </View>
-            </View>
-          )} */}
-
-          {!hasValidQueueStatus ? (
+          ) : !hasValidQueueStatus ? (
+            // NO QUEUE STATUS YET - Show QR Code
             <View style={styles.qrContainer}>
-              <QRCode
-                value={qrData}
-                size={250}
-                level="H"
-                includeMargin={true}
-                fgColor="#19AF5B"
-                bgColor="#fff"
-              />
-              <Text style={styles.qrValue}>{queueData.personalInfo.transactionCode}</Text>
-              <Text style={styles.qrSubtitle}>Transaction Code</Text>
+              <View style={styles.qrContent}>
+                <QRCode
+                  value={qrData}
+                  size={220}
+                  level="H"
+                  includeMargin={true}
+                  fgColor="#19AF5B"
+                  bgColor="#fff"
+                />
+                <Text style={styles.qrCode}>{queueData.personalInfo.transactionCode}</Text>
+                <Text style={styles.qrCodeLabel}>Transaction Code</Text>
+              </View>
             </View>
           ) : (
-            <View style={styles.queueInfoContainer}>
-              <View style={styles.queueNumberHeader}>
-                <Text style={styles.queueNumberLabel}>Your Queue Number</Text>
-                <Text style={styles.queueNumberValue}>{queueStatus.queueNumber || '-'}</Text>
-                <Text style={styles.queueNumberLabel}>Line Status: {queueStatus.position === 1 ? 'NEXT' : queueStatus.position === 0 ? 'GO IN' : `#${queueStatus.position || '-'}`}</Text>
-                <Text style={[styles.queueNumberLabel, { color: getStatusColor(queueStatus.status) }]}>{queueStatus.status?.toUpperCase() || 'UNKNOWN'}</Text>
+            // HAS QUEUE STATUS - Show Live Queue Info
+            <>
+              {/* QUEUE NUMBER CARD */}
+              <View style={[
+                styles.queueNumberCard,
+                { opacity: isUpdating ? 0.9 : 1 }
+              ]}>
+                <View style={styles.queueNumberContent}>
+                  <Text style={styles.queueLabel}>Your Queue Number</Text>
+                  <Text style={styles.queueNumber}>{queueStatus.queueNumber}</Text>
+                  
+                  <View style={styles.queueInfoRow}>
+                    <View style={styles.queueInfoItem}>
+                      <Text style={styles.queueInfoLabel}>Position</Text>
+                      <Text style={styles.queueInfoValue}>
+                        {getPositionDisplay(queueStatus.position)}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.queueStatusItem}>
+                      <Text style={styles.queueInfoLabel}>Status</Text>
+                      <View style={[
+                        styles.statusPill,
+                        { backgroundColor: getStatusColor(queueStatus.status) }
+                      ]}>
+                        <Text style={styles.statusPillText}>
+                          {queueStatus.status?.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
               </View>
 
+              {/* QUEUE DETAILS CARD */}
               <View style={styles.queueDetailsCard}>
-                <View style={styles.queueDetailRow}>
-                  <Text style={styles.queueDetailLabel}>📍 Office:</Text>
-                  <Text style={styles.queueDetailValue}>{queueStatus.office || 'N/A'}</Text>
+                <View style={styles.detailRow}>
+                  <View style={styles.detailIcon}>
+                    <Text style={styles.icon}>🏢</Text>
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>Office</Text>
+                    <Text style={styles.detailValue}>{queueStatus.office || 'N/A'}</Text>
+                  </View>
                 </View>
-                
+
                 {queueStatus.estimatedTime && (
-                  <View style={styles.queueDetailRow}>
-                    <Text style={styles.queueDetailLabel}>⏱️ Est. Time:</Text>
-                    <Text style={styles.queueDetailValue}>
-                      {queueStatus.estimatedTime}
-                    </Text>
+                  <View style={styles.detailRow}>
+                    <View style={styles.detailIcon}>
+                      <Text style={styles.icon}>⏱️</Text>
+                    </View>
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Estimated Time</Text>
+                      <Text style={styles.detailValue}>{queueStatus.estimatedTime}</Text>
+                    </View>
                   </View>
                 )}
+
               </View>
 
-              <View style={styles.statusIndicatorBanner}>
-                <Text style={[styles.statusIndicatorText]}>
-                  🔄 Status updates in real-time • {socketConnected ? '✅ Connected' : '⚠️ Offline'}
+              {/* STATUS INDICATOR */}
+              <View style={styles.statusIndicator}>
+                <Text style={styles.statusIndicatorText}>
+                  {isUpdating ? '🔄 Syncing...' : '✅ Live'} • {socketConnected ? '🟢 Connected' : '🔴 Offline'}
                 </Text>
+              </View>
+            </>
+          )}
+
+          {/* ✅ ALERT BANNERS */}
+
+          {/* Claimed Documents */}
+          {hasClaimedDocuments && (
+            <View style={styles.alertBanner}>
+              <View style={[styles.alertBannerContent, { backgroundColor: '#e8f5e9', borderLeftColor: '#19AF5B' }]}>
+                <Text style={styles.alertIcon}>✅</Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.alertTitle}>Documents Claimed!</Text>
+                  <Text style={styles.alertSubtitle}>
+                    {claimedDocuments.length} document{claimedDocuments.length > 1 ? 's have' : ' has'} been claimed
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+          
+          {/* Ready for Release */}
+          {hasReadyForReleaseDocuments && (
+            <View style={styles.alertBanner}>
+              <View style={[styles.alertBannerContent, { backgroundColor: '#fff3cd', borderLeftColor: '#ffc107' }]}>
+                <Text style={styles.alertIcon}>📋</Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.alertTitle}>Documents Ready!</Text>
+                  <Text style={styles.alertSubtitle}>
+                    {readyForReleaseDocuments.length} document{readyForReleaseDocuments.length > 1 ? 's are' : ' is'} ready for pickup
+                  </Text>
+                </View>
               </View>
             </View>
           )}
 
-          {(readyForReleaseDocuments.length > 0 || unpaidDocuments.length > 0 || unpaidPayments.length > 0 || paidDocuments.length > 0 || paidPayments.length > 0 || completedDocuments.length > 0 || completedPayments.length > 0 || cancelledDocuments.length > 0 || cancelledPayments.length > 0) && (
+          {/* Queue Completed */}
+          {isQueueStatusCompleted && !hasReadyForReleaseDocuments && !hasClaimedDocuments && (
+            <View style={styles.alertBanner}>
+              <View style={[styles.alertBannerContent, { backgroundColor: '#e8f5e9', borderLeftColor: '#19AF5B' }]}>
+                <Text style={styles.alertIcon}>🎉</Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.alertTitle}>Queue Completed!</Text>
+                  <Text style={styles.alertSubtitle}>Your transaction has been processed</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* All Paid */}
+          {isAllTransactionsPaidOrCancelled && activeTransactions.length > 0 && !hasReadyForReleaseDocuments && !hasClaimedDocuments && (
+            <View style={styles.alertBanner}>
+              <View style={[styles.alertBannerContent, { backgroundColor: '#e8f5e9', borderLeftColor: '#19AF5B' }]}>
+                <Text style={styles.alertIcon}>✅</Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.alertTitle}>Payment Complete!</Text>
+                  <Text style={styles.alertSubtitle}>All transactions have been settled</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+
+          {/* ✅ SUMMARY SECTION - Hide if status-based documents exist */}
+          {!hasStatusBasedDocuments && (completedDocuments.length > 0 || completedPayments.length > 0 || unpaidDocuments.length > 0 || unpaidPayments.length > 0 || paidDocuments.length > 0 || paidPayments.length > 0 || cancelledDocuments.length > 0 || cancelledPayments.length > 0) && (
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>📊 Payment Summary</Text>
-              
+
+              {/* Completed */}
               {(completedDocuments.length > 0 || completedPayments.length > 0) && (
-                <>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>✅ Total Completed:</Text>
-                    <Text style={[styles.summaryValue, { color: '#19AF5B', fontWeight: '700' }]}>
+                <View style={styles.summaryItem}>
+                  <View style={styles.summaryItemHeader}>
+                    <Text style={styles.summaryItemLabel}>✅ Completed</Text>
+                    <Text style={[styles.summaryItemValue, { color: '#19AF5B' }]}>
                       ₱{totalCompleted.toFixed(2)}
                     </Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Completed Items:</Text>
-                    <Text style={[styles.summaryValue, { color: '#19AF5B' }]}>
-                      {completedDocuments.length + completedPayments.length}
-                    </Text>
-                  </View>
-                </>
+                  <Text style={styles.summaryItemCount}>
+                    {getTransactionCount(completedDocuments, completedPayments)} items
+                  </Text>
+                </View>
               )}
 
+              {/* Paid */}
               {totalPaid > 0 && (
-                <>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>✅ Total Paid:</Text>
-                    <Text style={[styles.summaryValue, { color: '#19AF5B', fontWeight: '700' }]}>
+                <View style={styles.summaryItem}>
+                  <View style={styles.summaryItemHeader}>
+                    <Text style={styles.summaryItemLabel}>✅ Paid</Text>
+                    <Text style={[styles.summaryItemValue, { color: '#19AF5B' }]}>
                       ₱{totalPaid.toFixed(2)}
                     </Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Paid Items:</Text>
-                    <Text style={[styles.summaryValue, { color: '#19AF5B' }]}>
-                      {paidDocuments.length + paidPayments.length}
-                    </Text>
-                  </View>
-                </>
+                  <Text style={styles.summaryItemCount}>
+                    {getTransactionCount(paidDocuments, paidPayments)} items
+                  </Text>
+                </View>
               )}
 
+              {/* Unpaid */}
               {totalUnpaid > 0 && (
-                <>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>❌ Total Unpaid:</Text>
-                    <Text style={[styles.summaryValue, { color: '#FF6B6B', fontWeight: '700' }]}>
+                <View style={styles.summaryItem}>
+                  <View style={styles.summaryItemHeader}>
+                    <Text style={styles.summaryItemLabel}>❌ Unpaid</Text>
+                    <Text style={[styles.summaryItemValue, { color: '#FF6B6B' }]}>
                       ₱{totalUnpaid.toFixed(2)}
                     </Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Unpaid Items:</Text>
-                    <Text style={[styles.summaryValue, { color: '#FF6B6B' }]}>
-                      {unpaidDocuments.length + unpaidPayments.length}
-                    </Text>
-                  </View>
-                </>
+                  <Text style={styles.summaryItemCount}>
+                    {getTransactionCount(unpaidDocuments, unpaidPayments)} items
+                  </Text>
+                </View>
               )}
 
+              {/* Cancelled */}
               {totalCancelled > 0 && (
-                <>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>❌ Total Cancelled:</Text>
-                    <Text style={[styles.summaryValue, { color: '#d32f2f', fontWeight: '700' }]}>
+                <View style={[styles.summaryItem, { borderBottomWidth: 0 }]}>
+                  <View style={styles.summaryItemHeader}>
+                    <Text style={styles.summaryItemLabel}>❌ Cancelled</Text>
+                    <Text style={[styles.summaryItemValue, { color: '#d32f2f' }]}>
                       ₱{totalCancelled.toFixed(2)}
                     </Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Cancelled Items:</Text>
-                    <Text style={[styles.summaryValue, { color: '#d32f2f' }]}>
-                      {cancelledDocuments.length + cancelledPayments.length}
-                    </Text>
-                  </View>
-                </>
-              )}
-
-              {readyForReleaseDocuments.length > 0 && (
-                <View style={[styles.summaryRow, { borderBottomWidth: 0 }]}>
-                  <Text style={styles.summaryLabel}>📋 Ready for Release:</Text>
-                  <Text style={[styles.summaryValue, { color: '#ff8c00' }]}>
-                    {readyForReleaseDocuments.length}
+                  <Text style={styles.summaryItemCount}>
+                    {getTransactionCount(cancelledDocuments, cancelledPayments)} items
                   </Text>
                 </View>
               )}
             </View>
           )}
 
-          {readyForReleaseDocuments.length > 0 && (
-            <>
+          {/* ========== SECTION 1: STATUS-BASED (Ready for Release, Claimed) ========== */}
+
+          {/* ✅ CLAIMED DOCUMENTS LIST */}
+          {hasClaimedDocuments && (
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.title}>
-                  📋 Ready for Release ({readyForReleaseDocuments.length})
-                </Text>
-                <View style={[styles.liveIndicator, { backgroundColor: '#ffc107' }]} />
+                <Text style={styles.sectionTitle}>✅ Claimed Documents</Text>
+                <View style={[styles.badge, { backgroundColor: '#19AF5B' }]}>
+                  <Text style={styles.badgeText}>{claimedDocuments.length}</Text>
+                </View>
+              </View>
+              <FlatList
+                data={claimedDocuments}
+                keyExtractor={(item) => `claimed-${item.id}`}
+                scrollEnabled={false}
+                renderItem={({ item }) => (
+                  <DocumentCard document={item} status="claimed" />
+                )}
+              />
+            </View>
+          )}
+
+          {/* ✅ READY FOR RELEASE DOCUMENTS LIST */}
+          {hasReadyForReleaseDocuments && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>📋 Ready for Release</Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{readyForReleaseDocuments.length}</Text>
+                </View>
               </View>
               <FlatList
                 data={readyForReleaseDocuments}
                 keyExtractor={(item) => `ready-${item.id}`}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <View style={[styles.documentCard, styles.readyCard]}>
-                    <View style={styles.documentHeader}>
-                      <Text style={styles.documentTitle}>📋 {item.transactionDetails}</Text>
-                      <View style={[styles.statusBadge, styles.readyBadge]}>
-                        <Text style={[styles.statusBadgeText, { color: '#fff' }]}>{item.status}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Copies:</Text>
-                      <Text style={styles.value}>{item.copies}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Fee:</Text>
-                      <Text style={[styles.value, { color: '#19AF5B', fontWeight: '700' }]}>₱{(parseFloat(item.fee) || 0).toFixed(2)}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Payment:</Text>
-                      <View style={[
-                        styles.paymentStatusBadge,
-                        { backgroundColor: item.paymentStatus?.toLowerCase() === 'paid' ? '#e8f5e9' : '#ffe3e3' }
-                      ]}>
-                        <Text style={[
-                          styles.paymentStatusText,
-                          { color: item.paymentStatus?.toLowerCase() === 'paid' ? '#19AF5B' : '#FF6B6B' }
-                        ]}>
-                          {item.paymentStatus?.toLowerCase() === 'paid' ? '✅ PAID' : '❌ UNPAID'}
-                        </Text>
-                      </View>
-                    </View>
-                    {item.purpose && (
-                      <View style={styles.infoRow}>
-                        <Text style={styles.label}>Purpose:</Text>
-                        <Text style={styles.value}>{item.purpose}</Text>
-                      </View>
-                    )}
-                  </View>
+                  <DocumentCard document={item} status="ready" />
                 )}
               />
-            </>
+            </View>
           )}
 
-          {unpaidDocuments.length > 0 && (
-            <>
+          {/* ========== SECTION 2: PAYMENT-BASED (Unpaid, Paid, Cancelled) - Hide if status-based documents exist ========== */}
+
+          {/* ✅ UNPAID DOCUMENTS LIST */}
+          {!hasStatusBasedDocuments && unpaidDocuments.length > 0 && (
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.title}>
-                  📄 Unpaid Documents ({unpaidDocuments.length})
-                </Text>
-                <View style={styles.liveIndicator} />
+                <Text style={styles.sectionTitle}>📄 Pending Payment</Text>
+                <View style={[styles.badge, { backgroundColor: '#FF6B6B' }]}>
+                  <Text style={styles.badgeText}>{unpaidDocuments.length}</Text>
+                </View>
               </View>
               <FlatList
                 data={unpaidDocuments}
                 keyExtractor={(item) => `unpaid-doc-${item.id}`}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <View style={[styles.documentCard, styles.unpaidCard]}>
-                    <View style={styles.documentHeader}>
-                      <Text style={styles.documentTitle}>💳 {item.transactionDetails}</Text>
-                      <View style={[styles.statusBadge, styles.unpaidBadge]}>
-                        <Text style={[styles.statusBadgeText, { color: '#fff' }]}>
-                          {item.paymentStatus?.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Status:</Text>
-                      <Text style={[styles.value, { color: '#ff6f00', fontWeight: '600' }]}>
-                        {item.status}
-                      </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Copies:</Text>
-                      <Text style={styles.value}>{item.copies}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Total Amount:</Text>
-                      <Text style={[styles.value, { fontWeight: '700', color: '#FF6B6B', fontSize: 14 }]}>
-                        ₱{((parseFloat(item.fee) || 0) * (item.copies || 1)).toFixed(2)}
-                      </Text>
-                    </View>
-                    {item.purpose && (
-                      <View style={styles.infoRow}>
-                        <Text style={styles.label}>Purpose:</Text>
-                        <Text style={styles.value}>{item.purpose}</Text>
-                      </View>
-                    )}
-                  </View>
+                  <DocumentCard document={item} status="unpaid" />
                 )}
               />
-            </>
+            </View>
           )}
 
-          {unpaidPayments.length > 0 && (
-            <>
+          {/* ✅ UNPAID PAYMENTS LIST */}
+          {!hasStatusBasedDocuments && unpaidPayments.length > 0 && (
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.title}>
-                  💰 Unpaid Payments ({unpaidPayments.length})
-                </Text>
-                <View style={styles.liveIndicator} />
+                <Text style={styles.sectionTitle}>💰 Pending Payment</Text>
+                <View style={[styles.badge, { backgroundColor: '#FF6B6B' }]}>
+                  <Text style={styles.badgeText}>{unpaidPayments.length}</Text>
+                </View>
               </View>
               <FlatList
                 data={unpaidPayments}
                 keyExtractor={(item) => `unpaid-pay-${item.id}`}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <View style={[styles.documentCard, styles.unpaidCard]}>
-                    <View style={styles.documentHeader}>
-                      <Text style={styles.documentTitle}>💳 {item.transactionDetails}</Text>
-                      <View style={[styles.statusBadge, styles.unpaidBadge]}>
-                        <Text style={[styles.statusBadgeText, { color: '#fff' }]}>
-                          {item.paymentStatus?.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Status:</Text>
-                      <Text style={[styles.value, { color: '#ff6f00', fontWeight: '600' }]}>
-                        {item.status}
-                      </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Amount Due:</Text>
-                      <Text style={[styles.value, { fontWeight: '700', color: '#FF6B6B', fontSize: 14 }]}>
-                        ₱{(parseFloat(item.fee) || 0).toFixed(2)}
-                      </Text>
-                    </View>
-                  </View>
+                  <PaymentCard payment={item} status="unpaid" />
                 )}
               />
-            </>
+            </View>
           )}
 
-          {paidDocuments.length > 0 && (
-            <>
+          {/* ✅ PAID DOCUMENTS LIST - Hide if status-based documents exist */}
+          {!hasStatusBasedDocuments && paidDocuments.length > 0 && (
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.title}>
-                  ✅ Paid Documents ({paidDocuments.length})
-                </Text>
-                <View style={[styles.liveIndicator, { backgroundColor: '#19AF5B' }]} />
+                <Text style={styles.sectionTitle}>📄 Paid Documents</Text>
+                <View style={[styles.badge, { backgroundColor: '#19AF5B' }]}>
+                  <Text style={styles.badgeText}>{paidDocuments.length}</Text>
+                </View>
               </View>
               <FlatList
                 data={paidDocuments}
                 keyExtractor={(item) => `paid-doc-${item.id}`}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <View style={[styles.documentCard, styles.paidCard]}>
-                    <View style={styles.documentHeader}>
-                      <Text style={styles.documentTitle}>✅ {item.transactionDetails}</Text>
-                      <View style={[styles.statusBadge, styles.paidBadge]}>
-                        <Text style={[styles.statusBadgeText, { color: '#fff' }]}>
-                          PAID
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Status:</Text>
-                      <Text style={[styles.value, { color: '#19AF5B', fontWeight: '600' }]}>
-                        {item.status}
-                      </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Copies:</Text>
-                      <Text style={styles.value}>{item.copies}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Total Amount:</Text>
-                      <Text style={[styles.value, { fontWeight: '700', color: '#19AF5B', fontSize: 14 }]}>
-                        ₱{((parseFloat(item.fee) || 0) * (item.copies || 1)).toFixed(2)}
-                      </Text>
-                    </View>
-                    {item.purpose && (
-                      <View style={styles.infoRow}>
-                        <Text style={styles.label}>Purpose:</Text>
-                        <Text style={styles.value}>{item.purpose}</Text>
-                      </View>
-                    )}
-                  </View>
+                  <DocumentCard document={item} status="paid" />
                 )}
               />
-            </>
+            </View>
           )}
 
-          {paidPayments.length > 0 && (
-            <>
+          {/* ✅ PAID PAYMENTS LIST - Hide if status-based documents exist */}
+          {!hasStatusBasedDocuments && paidPayments.length > 0 && (
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.title}>
-                  ✅ Paid Payments ({paidPayments.length})
-                </Text>
-                <View style={[styles.liveIndicator, { backgroundColor: '#19AF5B' }]} />
+                <Text style={styles.sectionTitle}>💰 Paid Payments</Text>
+                <View style={[styles.badge, { backgroundColor: '#19AF5B' }]}>
+                  <Text style={styles.badgeText}>{paidPayments.length}</Text>
+                </View>
               </View>
               <FlatList
                 data={paidPayments}
                 keyExtractor={(item) => `paid-pay-${item.id}`}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <View style={[styles.documentCard, styles.paidCard]}>
-                    <View style={styles.documentHeader}>
-                      <Text style={styles.documentTitle}>✅ {item.transactionDetails}</Text>
-                      <View style={[styles.statusBadge, styles.paidBadge]}>
-                        <Text style={[styles.statusBadgeText, { color: '#fff' }]}>
-                          PAID
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Status:</Text>
-                      <Text style={[styles.value, { color: '#19AF5B', fontWeight: '600' }]}>
-                        {item.status}
-                      </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Amount Paid:</Text>
-                      <Text style={[styles.value, { fontWeight: '700', color: '#19AF5B', fontSize: 14 }]}>
-                        ₱{(parseFloat(item.fee) || 0).toFixed(2)}
-                      </Text>
-                    </View>
-                  </View>
+                  <PaymentCard payment={item} status="paid" />
                 )}
               />
-            </>
+            </View>
           )}
 
-          {completedDocuments.length > 0 && (
-            <>
+          {/* ✅ CANCELLED DOCUMENTS LIST - Hide if status-based documents exist */}
+          {!hasStatusBasedDocuments && cancelledDocuments.length > 0 && (
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.title}>
-                  ✅ Completed Documents ({completedDocuments.length})
-                </Text>
-                <View style={[styles.liveIndicator, { backgroundColor: '#19AF5B' }]} />
-              </View>
-              <FlatList
-                data={completedDocuments}
-                keyExtractor={(item) => `completed-doc-${item.id}`}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <View style={[styles.documentCard, styles.completedCard]}>
-                    <View style={styles.documentHeader}>
-                      <Text style={styles.documentTitle}>✅ {item.transactionDetails}</Text>
-                      <View style={[styles.statusBadge, styles.completedBadge]}>
-                        <Text style={[styles.statusBadgeText, { color: '#fff' }]}>
-                          COMPLETED
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Copies:</Text>
-                      <Text style={styles.value}>{item.copies}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Total Amount:</Text>
-                      <Text style={[styles.value, { fontWeight: '700', color: '#19AF5B', fontSize: 14 }]}>
-                        ₱{((parseFloat(item.fee) || 0) * (item.copies || 1)).toFixed(2)}
-                      </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Payment:</Text>
-                      <View style={[
-                        styles.paymentStatusBadge,
-                        { backgroundColor: '#e8f5e9' }
-                      ]}>
-                        <Text style={[
-                          styles.paymentStatusText,
-                          { color: '#19AF5B' }
-                        ]}>
-                          ✅ {item.paymentStatus?.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                    {item.purpose && (
-                      <View style={styles.infoRow}>
-                        <Text style={styles.label}>Purpose:</Text>
-                        <Text style={styles.value}>{item.purpose}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-              />
-            </>
-          )}
-
-          {completedPayments.length > 0 && (
-            <>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.title}>
-                  ✅ Completed Payments ({completedPayments.length})
-                </Text>
-                <View style={[styles.liveIndicator, { backgroundColor: '#19AF5B' }]} />
-              </View>
-              <FlatList
-                data={completedPayments}
-                keyExtractor={(item) => `completed-pay-${item.id}`}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <View style={[styles.documentCard, styles.completedCard]}>
-                    <View style={styles.documentHeader}>
-                      <Text style={styles.documentTitle}>✅ {item.transactionDetails}</Text>
-                      <View style={[styles.statusBadge, styles.completedBadge]}>
-                        <Text style={[styles.statusBadgeText, { color: '#fff' }]}>
-                          COMPLETED
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Amount:</Text>
-                      <Text style={[styles.value, { fontWeight: '700', color: '#19AF5B', fontSize: 14 }]}>
-                        ₱{(parseFloat(item.fee) || 0).toFixed(2)}
-                      </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Payment:</Text>
-                      <View style={[
-                        styles.paymentStatusBadge,
-                        { backgroundColor: '#e8f5e9' }
-                      ]}>
-                        <Text style={[
-                          styles.paymentStatusText,
-                          { color: '#19AF5B' }
-                        ]}>
-                          ✅ {item.paymentStatus?.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                )}
-              />
-            </>
-          )}
-
-          {cancelledDocuments.length > 0 && (
-            <>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.title}>
-                  ❌ Cancelled Documents ({cancelledDocuments.length})
-                </Text>
-                <View style={[styles.liveIndicator, { backgroundColor: '#d32f2f' }]} />
+                <Text style={styles.sectionTitle}>❌ Cancelled Documents</Text>
+                <View style={[styles.badge, { backgroundColor: '#d32f2f' }]}>
+                  <Text style={styles.badgeText}>{cancelledDocuments.length}</Text>
+                </View>
               </View>
               <FlatList
                 data={cancelledDocuments}
                 keyExtractor={(item) => `cancelled-doc-${item.id}`}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <View style={[styles.documentCard, styles.cancelledCard]}>
-                    <View style={styles.documentHeader}>
-                      <Text style={[styles.documentTitle, { textDecorationLine: 'line-through', color: '#999' }]}>
-                        ❌ {item.transactionDetails}
-                      </Text>
-                      <View style={[styles.statusBadge, styles.cancelledBadge]}>
-                        <Text style={[styles.statusBadgeText, { color: '#fff' }]}>
-                          CANCELLED
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Copies:</Text>
-                      <Text style={[styles.value, { color: '#999' }]}>{item.copies}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Original Fee:</Text>
-                      <Text style={[styles.value, { color: '#999', textDecorationLine: 'line-through' }]}>
-                        ₱{(parseFloat(item.fee) || 0).toFixed(2)}
-                      </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Payment:</Text>
-                      <View style={[
-                        styles.paymentStatusBadge,
-                        { backgroundColor: item.paymentStatus?.toLowerCase() === 'paid' ? '#e8f5e9' : '#ffe3e3' }
-                      ]}>
-                        <Text style={[
-                          styles.paymentStatusText,
-                          { color: item.paymentStatus?.toLowerCase() === 'paid' ? '#19AF5B' : '#FF6B6B' }
-                        ]}>
-                          {item.paymentStatus?.toLowerCase() === 'paid' ? '✅ PAID' : '❌ UNPAID'}
-                        </Text>
-                      </View>
-                    </View>
-                    {/* ✅ Show completed note if paid and cancelled */}
-                    {item.paymentStatus?.toLowerCase() === 'paid' && item.status?.toLowerCase() === 'cancelled' && (
-                      <View style={styles.completedNote}>
-                        <Text style={styles.completedNoteText}>✅ Transaction Completed</Text>
-                      </View>
-                    )}
-                    {item.purpose && (
-                      <View style={styles.infoRow}>
-                        <Text style={styles.label}>Purpose:</Text>
-                        <Text style={[styles.value, { color: '#999' }]}>{item.purpose}</Text>
-                      </View>
-                    )}
-                  </View>
+                  <DocumentCard document={item} status="cancelled" />
                 )}
               />
-            </>
+            </View>
           )}
 
-          {cancelledPayments.length > 0 && (
-            <>
+          {/* ✅ CANCELLED PAYMENTS LIST - Hide if status-based documents exist */}
+          {!hasStatusBasedDocuments && cancelledPayments.length > 0 && (
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.title}>
-                  ❌ Cancelled Payments ({cancelledPayments.length})
-                </Text>
-                <View style={[styles.liveIndicator, { backgroundColor: '#d32f2f' }]} />
+                <Text style={styles.sectionTitle}>❌ Cancelled Payments</Text>
+                <View style={[styles.badge, { backgroundColor: '#d32f2f' }]}>
+                  <Text style={styles.badgeText}>{cancelledPayments.length}</Text>
+                </View>
               </View>
               <FlatList
                 data={cancelledPayments}
                 keyExtractor={(item) => `cancelled-pay-${item.id}`}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <View style={[styles.documentCard, styles.cancelledCard]}>
-                    <View style={styles.documentHeader}>
-                      <Text style={[styles.documentTitle, { textDecorationLine: 'line-through', color: '#999' }]}>
-                        ❌ {item.transactionDetails}
-                      </Text>
-                      <View style={[styles.statusBadge, styles.cancelledBadge]}>
-                        <Text style={[styles.statusBadgeText, { color: '#fff' }]}>
-                          CANCELLED
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Original Amount:</Text>
-                      <Text style={[styles.value, { color: '#999', textDecorationLine: 'line-through' }]}>
-                        ₱{(parseFloat(item.fee) || 0).toFixed(2)}
-                      </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.label}>Payment:</Text>
-                      <View style={[
-                        styles.paymentStatusBadge,
-                        { backgroundColor: item.paymentStatus?.toLowerCase() === 'paid' ? '#e8f5e9' : '#ffe3e3' }
-                      ]}>
-                        <Text style={[
-                          styles.paymentStatusText,
-                          { color: item.paymentStatus?.toLowerCase() === 'paid' ? '#19AF5B' : '#FF6B6B' }
-                        ]}>
-                          {item.paymentStatus?.toLowerCase() === 'paid' ? '✅ PAID' : '❌ UNPAID'}
-                        </Text>
-                      </View>
-                    </View>
-                    {/* ✅ Show completed note if paid and cancelled */}
-                    {item.paymentStatus?.toLowerCase() === 'paid' && item.status?.toLowerCase() === 'cancelled' && (
-                      <View style={styles.completedNote}>
-                        <Text style={styles.completedNoteText}>✅ Transaction Completed</Text>
-                      </View>
-                    )}
-                  </View>
+                  <PaymentCard payment={item} status="cancelled" />
                 )}
               />
-            </>
+            </View>
           )}
 
-          {readyForReleaseDocuments.length === 0 && unpaidDocuments.length === 0 && unpaidPayments.length === 0 && paidDocuments.length === 0 && paidPayments.length === 0 && completedDocuments.length === 0 && completedPayments.length === 0 && cancelledDocuments.length === 0 && cancelledPayments.length === 0 && (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No documents found</Text>
-              <Text style={styles.emptySubtext}>Check back later for updates</Text>
+          {/* Empty State */}
+          {activeTransactions.length === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateIcon}>📭</Text>
+              <Text style={styles.emptyStateTitle}>No Transactions</Text>
+              <Text style={styles.emptyStateSubtitle}>Check back later for updates</Text>
             </View>
           )}
         </ScrollView>
       </View>
     </SafeAreaView>
+  );
+}
+
+// ✅ DOCUMENT CARD COMPONENT - UPDATED with conditional payment status
+function DocumentCard({ document, status }: { document: any; status: string }) {
+  const statusColors = {
+    ready: { bg: '#fffbea', border: '#ffc107', text: '#ff8c00' },
+    claimed: { bg: '#e8f5e9', border: '#19AF5B', text: '#19AF5B' },
+    unpaid: { bg: '#fff', border: '#FF6B6B', text: '#FF6B6B' },
+    paid: { bg: '#f0fdf4', border: '#19AF5B', text: '#19AF5B' },
+    cancelled: { bg: '#ffebee', border: '#d32f2f', text: '#d32f2f' },
+  };
+
+  const colors = statusColors[status as keyof typeof statusColors] || statusColors.paid;
+
+  // ✅ Hide payment status for ready-for-release and claimed
+  const showPaymentStatus = status !== 'ready' && status !== 'claimed';
+
+  return (
+    <View style={[styles.card, { borderLeftColor: colors.border, backgroundColor: colors.bg }]}>
+      <View style={styles.cardHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardTitle}>📋 {document.transactionDetails}</Text>
+          <Text style={styles.cardSubtitle}>{document.purpose || 'No purpose specified'}</Text>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: colors.border }]}>
+          <Text style={styles.statusBadgeText}>
+            {status === 'claimed' ? 'Claimed' : status === 'ready' ? 'Ready' : document.status}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.cardGrid}>
+        <View style={styles.gridItem}>
+          <Text style={styles.gridLabel}>Copies</Text>
+          <Text style={styles.gridValue}>{document.copies}</Text>
+        </View>
+        <View style={styles.gridItem}>
+          <Text style={styles.gridLabel}>Fee</Text>
+          <Text style={[styles.gridValue, { color: colors.text, fontWeight: '700' }]}>
+            ₱{(parseFloat(document.fee) || 0).toFixed(2)}
+          </Text>
+        </View>
+        <View style={styles.gridItem}>
+          <Text style={styles.gridLabel}>Total</Text>
+          <Text style={[styles.gridValue, { color: colors.text, fontWeight: '700' }]}>
+            ₱{((parseFloat(document.fee) || 0) * (document.copies || 1)).toFixed(2)}
+          </Text>
+        </View>
+      </View>
+
+      {/* ✅ Only show payment status for unpaid, paid, and cancelled */}
+      {showPaymentStatus && (
+        <View style={styles.cardFooter}>
+          <Text style={styles.paymentLabel}>Payment Status:</Text>
+          <View style={[
+            styles.paymentStatusBadge,
+            { backgroundColor: document.paymentStatus?.toLowerCase() === 'paid' ? '#e8f5e9' : '#ffe3e3' }
+          ]}>
+            <Text style={[
+              styles.paymentStatusText,
+              { color: document.paymentStatus?.toLowerCase() === 'paid' ? '#19AF5B' : '#FF6B6B' }
+            ]}>
+              {document.paymentStatus?.toLowerCase() === 'paid' ? '✅ PAID' : '❌ UNPAID'}
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ✅ PAYMENT CARD COMPONENT - UPDATED with conditional payment status
+function PaymentCard({ payment, status }: { payment: any; status: string }) {
+  const statusColors = {
+    unpaid: { bg: '#fff', border: '#FF6B6B', text: '#FF6B6B' },
+    paid: { bg: '#f0fdf4', border: '#19AF5B', text: '#19AF5B' },
+    cancelled: { bg: '#ffebee', border: '#d32f2f', text: '#d32f2f' },
+  };
+
+  const colors = statusColors[status as keyof typeof statusColors] || statusColors.paid;
+
+  // ✅ Show payment status only for unpaid, paid, and cancelled
+  const showPaymentStatus = status !== 'ready' && status !== 'claimed';
+
+  return (
+    <View style={[styles.card, { borderLeftColor: colors.border, backgroundColor: colors.bg }]}>
+      <View style={styles.cardHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardTitle}>💰 {payment.transactionDetails || payment.PaymentFees || 'Payment'}</Text>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: colors.border }]}>
+          <Text style={styles.statusBadgeText}>{payment.status}</Text>
+        </View>
+      </View>
+
+      <View style={styles.cardGrid}>
+        <View style={[styles.gridItem, { flex: 1 }]}>
+          <Text style={styles.gridLabel}>Amount</Text>
+          <Text style={[styles.gridValue, { color: colors.text, fontWeight: '700' }]}>
+            ₱{(parseFloat(payment.fee || payment.Price) || 0).toFixed(2)}
+          </Text>
+        </View>
+      </View>
+
+      {/* ✅ Only show payment status for unpaid, paid, and cancelled */}
+      {showPaymentStatus && (
+        <View style={styles.cardFooter}>
+          <Text style={styles.paymentLabel}>Payment Status:</Text>
+          <View style={[
+            styles.paymentStatusBadge,
+            { backgroundColor: payment.paymentStatus?.toLowerCase() === 'paid' ? '#e8f5e9' : '#ffe3e3' }
+          ]}>
+            <Text style={[
+              styles.paymentStatusText,
+              { color: payment.paymentStatus?.toLowerCase() === 'paid' ? '#19AF5B' : '#FF6B6B' }
+            ]}>
+              {payment.paymentStatus?.toLowerCase() === 'paid' ? '✅ PAID' : '❌ UNPAID'}
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -940,14 +847,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9F9F9',
   },
   content: {
-    padding: 20,
-    paddingBottom: 30,
+    padding: 16,
+    paddingBottom: 40,
   },
+
+  // ✅ HEADER
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
@@ -963,254 +873,301 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginRight: 5,
   },
 
-  readyForReleaseBanner: {
+  // ✅ LIVE UPDATE BANNER
+  liveUpdateBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff3cd',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    borderLeftWidth: 5,
-    borderLeftColor: '#ffc107',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    backgroundColor: '#e3f2fd',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196f3',
   },
-  readyForReleaseIcon: {
-    fontSize: 32,
-  },
-  readyForReleaseTitle: {
+  liveUpdateIcon: {
     fontSize: 16,
+  },
+  liveUpdateTitle: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#ff8c00',
-    marginBottom: 4,
+    color: '#1976d2',
   },
-  readyForReleaseSubtitle: {
-    fontSize: 12,
-    color: '#856404',
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  readyForReleaseNote: {
+  liveUpdateSubtitle: {
     fontSize: 11,
-    color: '#856404',
-    fontWeight: '600',
-    fontStyle: 'italic',
+    color: '#1976d2',
+    opacity: 0.8,
+    marginTop: 2,
   },
 
-  allTransactionsCompletedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e8f5e9',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    borderLeftWidth: 5,
-    borderLeftColor: '#19AF5B',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  allTransactionsCompletedIcon: {
-    fontSize: 32,
-  },
-  allTransactionsCompletedTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#19AF5B',
-    marginBottom: 4,
-  },
-  allTransactionsCompletedSubtitle: {
-    fontSize: 12,
-    color: '#4caf50',
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  redirectingText: {
-    fontSize: 11,
-    color: '#19AF5B',
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
-
-  queueCompletedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e8f5e9',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    borderLeftWidth: 5,
-    borderLeftColor: '#19AF5B',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  queueCompletedIcon: {
-    fontSize: 32,
-  },
-  queueCompletedTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#19AF5B',
-    marginBottom: 4,
-  },
-  queueCompletedSubtitle: {
-    fontSize: 12,
-    color: '#4caf50',
-    fontWeight: '500',
-  },
-
-  completedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e8f5e9',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    borderLeftWidth: 5,
-    borderLeftColor: '#19AF5B',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  completedBannerIcon: {
-    fontSize: 32,
-  },
-  completedBannerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#19AF5B',
-    marginBottom: 4,
-  },
-  completedBannerSubtitle: {
-    fontSize: 12,
-    color: '#4caf50',
-    fontWeight: '500',
-  },
-
-  completedNote: {
-    backgroundColor: '#e8f5e9',
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: '#19AF5B',
-  },
-  completedNoteText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#19AF5B',
-    textAlign: 'center',
-  },
-
-  qrValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#222',
-    marginTop: 15,
-  },
-  qrSubtitle: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 5,
-  },
+  // ✅ QR CONTAINER
   qrContainer: {
+    marginBottom: 24,
+  },
+  qrContent: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 25,
-    marginBottom: 20,
+    borderRadius: 16,
+    padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-
-  queueInfoContainer: {
-    marginBottom: 20,
-    gap: 12,
-  },
-  
-  queueNumberHeader: {
-    backgroundColor: '#19AF5B',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 3,
   },
-  queueNumberLabel: {
-    fontSize: 12,
+  qrStatusLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
-    marginBottom: 8,
-    opacity: 0.9,
+    color: '#19AF5B',
+    marginBottom: 16,
   },
-  queueNumberValue: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 2,
+  qrCode: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#222',
+    marginTop: 16,
+  },
+  qrCodeLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  qrStatus: {
+    fontSize: 12,
+    color: '#19AF5B',
+    marginTop: 12,
+    fontWeight: '600',
   },
 
-  queueDetailsCard: {
+  // ✅ LOADING SCREEN STYLES
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 600,
+  },
+  loadingContent: {
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 24,
+  },
+  loadingSpinner: {
+    marginBottom: 24,
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    borderRadius: 40,
+  },
+  loadingTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#222',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  loadingSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  statusIndicatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  codeContainer: {
+    width: '100%',
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    gap: 14,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#19AF5B',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    borderLeftWidth: 5,
-    borderLeftColor: '#19AF5B',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  queueDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  queueDetailLabel: {
-    fontSize: 13,
+  codeLabel: {
+    fontSize: 11,
     fontWeight: '600',
-    color: '#666',
+    color: '#999',
+    marginBottom: 8,
   },
-  queueDetailValue: {
-    fontSize: 14,
+  code: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#222',
-    textAlign: 'right',
+    color: '#19AF5B',
+    letterSpacing: 1,
+  },
+  tipContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fffbea',
+    borderRadius: 10,
+    padding: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ffc107',
+  },
+  tipIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  tipText: {
     flex: 1,
-    marginLeft: 12,
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+    lineHeight: 18,
   },
 
-  statusIndicatorBanner: {
+  // ✅ QUEUE NUMBER CARD
+  queueNumberCard: {
+    backgroundColor: '#19AF5B',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  queueNumberContent: {
+    alignItems: 'center',
+  },
+  queueLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    opacity: 0.9,
+  },
+  queueNumber: {
+    fontSize: 56,
+    fontWeight: '800',
+    color: '#fff',
+    marginVertical: 8,
+    letterSpacing: 2,
+  },
+  queueInfoRow: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 12,
+    width: '100%',
+  },
+  queueInfoItem: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+  },
+  queueStatusItem: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+  },
+  queueInfoLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+    opacity: 0.8,
+    marginBottom: 4,
+  },
+  queueInfoValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  statusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // ✅ QUEUE DETAILS CARD
+  queueDetailsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#19AF5B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  detailIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  icon: {
+    fontSize: 18,
+  },
+  detailContent: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#999',
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#222',
+  },
+
+  // ✅ STATUS INDICATOR
+  statusIndicator: {
     backgroundColor: '#e3f2fd',
     borderRadius: 8,
     padding: 10,
+    marginBottom: 16,
     borderLeftWidth: 3,
     borderLeftColor: '#2196f3',
   },
@@ -1218,144 +1175,47 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#1976d2',
+    textAlign: 'center',
   },
 
-  sectionHeader: {
+  // ✅ ALERT BANNERS
+  alertBanner: {
+    marginBottom: 16,
+  },
+  alertBannerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 15,
-    marginTop: 10,
-  },
-  liveIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF6B6B',
-    marginLeft: 10,
-  },
-
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#222',
-  },
-  documentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 14,
     borderLeftWidth: 4,
-    borderLeftColor: '#19AF5B',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
   },
-  readyCard: {
-    borderLeftColor: '#ffc107',
-    backgroundColor: '#fffbea',
+  alertIcon: {
+    fontSize: 28,
   },
-  unpaidCard: {
-    borderLeftColor: '#FF6B6B',
-    backgroundColor: '#fff',
-  },
-  paidCard: {
-    borderLeftColor: '#19AF5B',
-    backgroundColor: '#f0fdf4',
-  },
-  completedCard: {
-    borderLeftColor: '#19AF5B',
-    backgroundColor: '#f0fdf4',
-  },
-  cancelledCard: {
-    borderLeftColor: '#d32f2f',
-    backgroundColor: '#ffebee',
-  },
-  documentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  documentTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+  alertTitle: {
+    fontSize: 14,
+    fontWeight: '700',
     color: '#222',
-    flex: 1,
+    marginBottom: 2,
   },
-  statusBadge: {
-    backgroundColor: '#e8f5e9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginLeft: 10,
-  },
-  readyBadge: {
-    backgroundColor: '#ffc107',
-  },
-  unpaidBadge: {
-    backgroundColor: '#FF6B6B',
-  },
-  paidBadge: {
-    backgroundColor: '#19AF5B',
-  },
-  completedBadge: {
-    backgroundColor: '#19AF5B',
-  },
-  cancelledBadge: {
-    backgroundColor: '#d32f2f',
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#19AF5B',
-    textTransform: 'capitalize',
-  },
-
-  paymentStatusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginLeft: 'auto',
-  },
-  paymentStatusText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    alignItems: 'center',
-  },
-  label: {
+  alertSubtitle: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#666',
   },
-  value: {
-    fontSize: 12,
-    color: '#222',
-    fontWeight: '500',
-  },
 
+  // ✅ SUMMARY CARD
   summaryCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 15,
-    marginTop: 20,
-    marginBottom: 10,
+    padding: 16,
+    marginBottom: 20,
     borderLeftWidth: 4,
     borderLeftColor: '#2196f3',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   summaryTitle: {
     fontSize: 15,
@@ -1363,37 +1223,169 @@ const styles = StyleSheet.create({
     color: '#2196f3',
     marginBottom: 12,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
+  summaryItem: {
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  summaryLabel: {
+  summaryItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  summaryItemLabel: {
     fontSize: 13,
     fontWeight: '600',
     color: '#666',
   },
-  summaryValue: {
+  summaryItemValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  summaryItemCount: {
+    fontSize: 11,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+
+  // ✅ SECTION
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#222',
+  },
+  badge: {
+    backgroundColor: '#ffc107',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // ✅ CARD
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#222',
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    textTransform: 'capitalize',
+  },
+
+  // ✅ CARD GRID
+  cardGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  gridItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  gridLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#999',
+    marginBottom: 4,
+  },
+  gridValue: {
     fontSize: 14,
     fontWeight: '700',
     color: '#222',
   },
 
-  emptyContainer: {
+  // ✅ CARD FOOTER
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  paymentLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  paymentStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  paymentStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+
+  // ✅ EMPTY STATE
+  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 40,
+    paddingVertical: 60,
   },
-  emptyText: {
+  emptyStateIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  emptyStateTitle: {
     fontSize: 16,
-    color: '#999',
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#222',
+    marginBottom: 4,
   },
-  emptySubtext: {
+  emptyStateSubtitle: {
     fontSize: 13,
-    color: '#ccc',
-    marginTop: 5,
+    color: '#999',
   },
 });
