@@ -238,13 +238,19 @@ export default function QueueScreen() {
     return statusMap[status.toLowerCase()] || '#666';
   };
 
-  // ✅ LOGIC: Get position display text
-  const getPositionDisplay = (position: number | undefined): string => {
-    if (!position && position !== 0) return '-';
-    if (position === 0) return '🟢 ON GOING';
-    if (position === 1) return '🔴 NEXT';
-    return `#${position}`;
-  };
+// ✅ LOGIC: Get position display text
+const getPositionDisplay = (position: number | undefined, queueStatus: any): string => {
+  // ✅ Check if queue is completed first
+  if (queueStatus?.status?.toLowerCase() === 'completed') {
+    return '✅ COMPLETED';
+  }
+  
+  if (!position && position !== 0) return '-';
+  if (position === 0) return '🟢 ON GOING';
+  if (position === 1) return '🔴 NEXT';
+  
+  return `#${position}`;
+};
 
   // ✅ LOGIC: Get transaction item count
   const getTransactionCount = (...arrays: any[][]): number => 

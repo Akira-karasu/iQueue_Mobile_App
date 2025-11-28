@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type HomeTabNavigationProp = BottomTabNavigationProp<AppTabsParamList, "HomeStack">;
 
 export const useRequestTransaction = (transactions: any[], personalInfoId: number) => {
-
   // ✅ STATE
   const [isCancelling, setIsCancelling] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState<string | null>(null);
@@ -29,21 +28,37 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
   // ✅ NAVIGATION
   const TabNavigation = useNavigation<HomeTabNavigationProp>();
 
-  // ✅ INITIALIZE refreshedTransactions with transactions on mount
+  // ✅ INITIALIZE refreshedTransactions with transactions on mount - FIXED
   useEffect(() => {
     if (refreshedTransactions.length === 0 && transactions.length > 0) {
       console.log("📥 Initializing refreshedTransactions with:", transactions.length, "items");
-      setRefreshedTransactions(transactions);
+      setRefreshedTransactions([...transactions]); // ✅ Create new array reference
     }
-  }, [transactions]);
+  }, []); // ✅ FIXED: Empty dependency - only run on mount
 
-  // ✅ MEMOIZATION - activeTransactions from socket OR initial
+  // ✅ MEMOIZATION - activeTransactions from socket OR initial - FIXED
   const activeTransactions = useMemo(() => {
     const result = refreshedTransactions.length > 0 ? refreshedTransactions : transactions;
-    console.log("🔄 activeTransactions computed:", result.length, "items");
+    console.log("🔄 activeTransactions computed:", result.length, "items", {
+      fromSocket: refreshedTransactions.length > 0,
+      timestamp: new Date().toLocaleTimeString()
+    });
     return result;
-  }, [refreshedTransactions, transactions]);
+  }, [refreshedTransactions, transactions]); // ✅ Depends on both arrays
 
+  // ✅ Debug: Log when data changes
+  useEffect(() => {
+    console.log("📊 activeTransactions changed:", {
+      count: activeTransactions.length,
+      transactions: activeTransactions.map(t => ({
+        id: t.id,
+        status: t.status,
+        paymentStatus: t.paymentStatus
+      }))
+    });
+  }, [activeTransactions]);
+
+  // ✅ OPTIMIZATION: Memoize grouped transactions separately
   const groupedTransactions = useMemo(() => {
     const grouped: Record<string, any[]> = {};
     activeTransactions.forEach((t) => {
@@ -53,28 +68,25 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
       }
       grouped[type].push(t);
     });
-    console.log("📊 Grouped transactions:", Object.keys(grouped));
     return grouped;
   }, [activeTransactions]);
 
+  // ✅ OPTIMIZATION: Calculate totalCost efficiently
   const totalCost = useMemo(() => {
-    const total = activeTransactions.reduce((sum, t) => {
+    return activeTransactions.reduce((sum, t) => {
       const fee = parseFloat(t.fee || "0") || 0;
       const copies = parseInt(t.copies || "1") || 1;
-      const isPayment = t.transactionType === "Payment";
-      return sum + (isPayment ? fee : fee * copies);
+      return sum + (t.transactionType === "Payment" ? fee : fee * copies);
     }, 0);
-    console.log("💰 Total cost:", total);
-    return total;
   }, [activeTransactions]);
 
+  // ✅ OPTIMIZATION: Simplify paymentStatus calculation
   const paymentStatus = useMemo(() => {
     if (activeTransactions.length === 0) return "No Items";
-    const allPaid = activeTransactions.every((t) => t.paymentStatus?.toLowerCase() === "paid");
-    const allUnpaid = activeTransactions.every((t) => t.paymentStatus?.toLowerCase() === "unpaid");
-    const status = allPaid ? "Fully Paid" : allUnpaid ? "Not Fully Paid" : "Partially Paid";
-    console.log("💳 Payment status:", status);
-    return status;
+    const statuses = activeTransactions.map(t => t.paymentStatus?.toLowerCase());
+    if (statuses.every(s => s === "paid")) return "Fully Paid";
+    if (statuses.every(s => s === "unpaid")) return "Not Fully Paid";
+    return "Partially Paid";
   }, [activeTransactions]);
 
   // ✅ Fetch queue status
@@ -82,7 +94,6 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     try {
       console.log("📊 Fetching queue status for personalInfoId:", personalInfoId);
       const status = await getQueueStatusByPersonalId(personalInfoId);
-      
       if (status) {
         console.log("✅ Queue status fetched:", status);
         setQueueStatus(status);
@@ -93,318 +104,229 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     }
   }, [personalInfoId]);
 
-  // ✅ Refetch function
+  // ✅ OPTIMIZATION: Refetch function with better error handling
   const refetchData = useCallback(async (statusMessage: string) => {
     try {
       console.log("🔄 Refetching data...", statusMessage);
       const response = await getRequestTransactionRequest(personalInfoId);
-      const updatedTransactions = response?.transactions || response || [];
+      const updatedTransactions = Array.isArray(response?.transactions) 
+        ? response.transactions 
+        : Array.isArray(response) 
+          ? response 
+          : [];
       const updatedStatus = response?.personalInfo?.status || null;
-      
-      if (Array.isArray(updatedTransactions) && updatedTransactions.length > 0) {
+
+      if (updatedTransactions.length > 0) {
         console.log("✅ Data refetched:", updatedTransactions.length, "items");
-        
-        // ✅ Verify transaction details are preserved
-        console.log("📄 Refetched transactions details:", updatedTransactions.map(t => ({
-          id: t.id,
-          name: t.transactionDetails,
-          fee: t.fee,
-          copies: t.copies,
-          status: t.status,
-          paymentStatus: t.paymentStatus,
-        })));
-        
-        setRefreshedTransactions(updatedTransactions);
-        
-        if (updatedStatus) {
-          console.log("✅ Updated personalInfoStatus:", updatedStatus);
-          setPersonalInfoStatus(updatedStatus);
-        }
+        setRefreshedTransactions([...updatedTransactions]); // ✅ Create new reference
       }
 
-      // ✅ Also fetch queue status after refetch
+      if (updatedStatus) {
+        console.log("✅ Updated personalInfoStatus:", updatedStatus);
+        setPersonalInfoStatus(updatedStatus);
+      }
+
+      // ✅ Fetch queue status after refetch
       await fetchQueueStatus();
+
+      return { success: true, transactions: updatedTransactions, status: updatedStatus };
     } catch (error) {
       console.error("❌ Refetch error:", error);
+      return { success: false, error };
     }
   }, [personalInfoId, fetchQueueStatus]);
 
-  // ✅ Update individual transaction - FIXED: Only update specified fields
+  // ✅ OPTIMIZATION: Update individual transaction more efficiently
   const updateSingleTransaction = useCallback((transactionId: number, updates: any) => {
-    console.log("🔄 updateSingleTransaction called:", { 
-      transactionId, 
-      updates: {
-        status: updates.status,
-        paymentStatus: updates.paymentStatus,
-      }
-    });
-    
     setRefreshedTransactions((prevTransactions) => {
       const validTransactions = prevTransactions.length > 0 ? prevTransactions : transactions;
-      
-      if (validTransactions.length === 0) {
-        console.warn("⚠️ No transactions to update!");
-        return prevTransactions;
-      }
-      
-      const updated = validTransactions.map((transaction) => {
-        if (transaction.id === transactionId) {
-          // ✅ FIX: Only update the specified fields, preserve everything else
-          const updatedTransaction = { 
-            ...transaction, 
-            ...updates 
-          };
-          
-          console.log("📝 Updated transaction details:", {
-            id: updatedTransaction.id,
-            transactionDetails: updatedTransaction.transactionDetails,
-            fee: updatedTransaction.fee,
-            copies: updatedTransaction.copies,
-            status: updatedTransaction.status,
-            paymentStatus: updatedTransaction.paymentStatus,
-          });
-          
-          return updatedTransaction;
-        }
-        return transaction;
-      });
-      
-      return updated;
+
+      if (validTransactions.length === 0) return prevTransactions;
+
+      return validTransactions.map((transaction) =>
+        transaction.id === transactionId 
+          ? { ...transaction, ...updates }
+          : transaction
+      );
     });
   }, [transactions]);
 
-  // ✅ SOCKET CONNECTION - MAIN EFFECT
-  useEffect(() => {
-    if (!personalInfoId) {
-      console.warn("⚠️ Missing personalInfoId");
-      return;
-    }
+  // ✅ OPTIMIZATION: Extract socket event handlers into separate functions
+  const createSocketHandlers = useCallback(() => {
+    return {
+      handleConnect: () => {
+        console.log("✅ Socket connected");
+        reconnectAttemptRef.current = 0;
+        setSocketConnected(true);
+        socketRef.current?.emit('joinUserRoom', { personalInfoId });
+      },
 
-    console.log("📡 STEP 1: Setting up socket for personalInfoId:", personalInfoId);
-    setSocketConnected(false);
+      handleRoomJoined: () => {
+        console.log("✅ Room joined");
+        if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+      },
 
-    // ✅ Fetch queue status on mount
-    fetchQueueStatus();
+      handleStatusUpdate: (data: any, source: string) => {
+        console.log(`📡 ${source}:`, data.status);
+        setPersonalInfoStatus(data.status);
+        if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
+        refetchTimeoutRef.current = setTimeout(() => {
+          refetchData(`${source}: ${data.status}`);
+        }, 500);
+      },
 
-    const socket = getRequestTransactionProcessSocket(personalInfoId);
-    socketRef.current = socket;
+      handleTransactionUpdate: (data: any) => {
+        const transactionId = data.transactionId || data.id;
+        console.log("📝 Updating single transaction:", transactionId, {
+          status: data.status,
+          paymentStatus: data.paymentStatus
+        });
+        updateSingleTransaction(transactionId, {
+          status: data.status,
+          paymentStatus: data.paymentStatus,
+        });
+      },
 
-    console.log("🔍 Socket info:", {
-      connected: socket.connected,
-      id: socket.id,
-      personalInfoId
+      handleAllTransactionsUpdated: (data: any) => {
+        const updatedTransactions = data.transactions || data;
+        if (Array.isArray(updatedTransactions) && updatedTransactions.length > 0) {
+          console.log("✅ Updating all transactions from socket:", updatedTransactions.length);
+          setRefreshedTransactions([...updatedTransactions]); // ✅ Create new reference
+        }
+        if (data.personalInfoStatus) {
+          console.log("✅ Updating personalInfoStatus:", data.personalInfoStatus);
+          setPersonalInfoStatus(data.personalInfoStatus);
+        }
+      },
+
+      handleQueueStatusUpdated: (data: any) => {
+        console.log("📊 Queue status updated:", data);
+        setQueueStatus(data);
+      },
+
+      handleDisconnect: () => {
+        console.log("❌ Socket disconnected");
+        setSocketConnected(false);
+      },
+    };
+  }, [personalInfoId, refetchData, updateSingleTransaction]);
+
+ // ✅ SOCKET CONNECTION - MAIN EFFECT (FULLY FIXED)
+useEffect(() => {
+  if (!personalInfoId) {
+    console.warn("⚠️ Missing personalInfoId");
+    return;
+  }
+
+  console.log("📡 Setting up socket for personalInfoId:", personalInfoId);
+  setSocketConnected(false);
+  fetchQueueStatus();
+
+  const socket = getRequestTransactionProcessSocket(personalInfoId);
+  socketRef.current = socket;
+
+  const handlers = createSocketHandlers();
+  const registeredHandlers: Array<[string, any]> = [];
+
+  // ✅ FIX 1: Proper listener registration with tracking
+  const registerListener = (event: string, handler: any) => {
+    socket.on(event, handler);
+    registeredHandlers.push([event, handler]);
+  };
+
+  try {
+    // ✅ Register all listeners
+    registerListener("connect", handlers.handleConnect);
+    registerListener("roomJoined", handlers.handleRoomJoined);
+    registerListener("personalInfoStatusUpdated", (data: any) => 
+      handlers.handleStatusUpdate(data, "PersonalInfo Updated")
+    );
+    registerListener("walkinStatusUpdated", (data: any) => 
+      handlers.handleStatusUpdate(data, "Walkin Updated")
+    );
+    registerListener("transactionStatusChanged", (data: any) => 
+      handlers.handleTransactionUpdate({ ...data, paymentStatus: data.paymentStatus })
+    );
+    registerListener("singleTransactionUpdated", handlers.handleTransactionUpdate);
+    registerListener("paymentStatusChanged", (data: any) => 
+      handlers.handleTransactionUpdate({ ...data, status: data.status })
+    );
+    registerListener("allTransactionsUpdated", handlers.handleAllTransactionsUpdated);
+    registerListener("queueStatusUpdated", handlers.handleQueueStatusUpdated);
+    registerListener("personalInfoChanged", (data: any) => {
+      if (data.status) setPersonalInfoStatus(data.status);
+      if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
+      refetchTimeoutRef.current = setTimeout(() => refetchData("PersonalInfo Changed"), 500);
+    });
+    registerListener("disconnect", handlers.handleDisconnect);
+    registerListener("connect_error", (error: any) => {
+      console.error("❌ Connection error:", error);
+      setSocketConnected(false);
+    });
+    registerListener("error", (error: any) => {
+      console.error("❌ Socket error:", error);
     });
 
-    // ✅ STEP 2: On socket connect
-    const handleConnect = () => {
-      console.log("✅ STEP 2: Socket connected:", socket.id);
-      reconnectAttemptRef.current = 0;
-      setSocketConnected(true);
-      
-      // ✅ STEP 3: Emit joinUserRoom WITHOUT email
-      console.log("📤 STEP 3: Emitting joinUserRoom with personalInfoId:", personalInfoId);
-      socket.emit('joinUserRoom', { personalInfoId });
-    };
-
-    // ✅ STEP 4: On room joined
-    const handleRoomJoined = (data: any) => {
-      console.log("✅ STEP 4: Joined room:", data.roomName);
-      
-      if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
-    };
-
-    // ✅ STEP 5a: Personal Info Status Updated
-    const handlePersonalInfoStatusUpdated = (data: any) => {
-      console.log("📡 STEP 5a: PersonalInfo status updated:", data.status);
-      setPersonalInfoStatus(data.status);
-
-      if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
-      refetchTimeoutRef.current = setTimeout(() => {
-        refetchData(`Status changed to ${data.status}`);
-      }, 500);
-    };
-
-    // ✅ STEP 5b: Walkin Status Updated
-    const handleWalkinStatusUpdated = (data: any) => {
-      console.log("📡 STEP 5b: Walkin status updated:", data.status);
-      setPersonalInfoStatus(data.status);
-
-      if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
-      refetchTimeoutRef.current = setTimeout(() => {
-        refetchData(`Updated: ${data.status}`);
-      }, 500);
-    };
-
-    // ✅ STEP 5c: Transaction Status Changed - REAL-TIME UPDATE
-    const handleTransactionStatusChanged = (data: any) => {
-      console.log("📡 STEP 5c: Transaction status changed:", {
-        transactionId: data.transactionId,
-        oldStatus: "previous",
-        newStatus: data.status
-      });
-      
-      // ✅ Update the transaction immediately
-      updateSingleTransaction(data.transactionId, {
-        status: data.status,
-      });
-      
-      setTransactionStatus(data.status);
-      
-      console.log("✅ Transaction status updated in UI");
-    };
-
-    // ✅ STEP 5d: Single Transaction Updated - REAL-TIME UPDATE
-    const handleSingleTransactionUpdated = (data: any) => {
-      console.log("📡 STEP 5d: Single transaction updated:", {
-        id: data.transactionId || data.id,
-        oldStatus: "previous",
-        newStatus: data.status,
-        oldPaymentStatus: "previous",
-        newPaymentStatus: data.paymentStatus
-      });
-      
-      const transactionId = data.transactionId || data.id;
-      
-      // ✅ Update both status and paymentStatus
-      updateSingleTransaction(transactionId, {
-        status: data.status,
-        paymentStatus: data.paymentStatus,
-      });
-      
-      console.log("✅ Single transaction updated in UI");
-    };
-
-    // ✅ STEP 5d2: Payment Status Changed - REAL-TIME UPDATE
-    const handlePaymentStatusChanged = (data: any) => {
-      console.log("📡 STEP 5d2: Payment status changed:", {
-        id: data.transactionId || data.id,
-        oldPaymentStatus: "previous",
-        newPaymentStatus: data.paymentStatus
-      });
-      
-      const transactionId = data.transactionId || data.id;
-      
-      // ✅ Update paymentStatus only
-      updateSingleTransaction(transactionId, {
-        paymentStatus: data.paymentStatus,
-      });
-      
-      console.log("✅ Payment status updated in UI");
-    };
-
-    // ✅ STEP 5e: All Transactions Updated
-    const handleAllTransactionsUpdated = (data: any) => {
-      console.log("📡 STEP 5e: All transactions updated:", data.transactions?.length || 0);
-      
-      const updatedTransactions = data.transactions || data;
-      if (Array.isArray(updatedTransactions)) {
-        console.log("📄 All transactions refetched, verifying details:", 
-          updatedTransactions.map(t => ({
-            id: t.id,
-            name: t.transactionDetails,
-            fee: t.fee,
-            status: t.status,
-            paymentStatus: t.paymentStatus,
-          }))
-        );
-        setRefreshedTransactions(updatedTransactions);
-      }
-      
-      if (data.personalInfoStatus) {
-        setPersonalInfoStatus(data.personalInfoStatus);
-      }
-    };
-
-    // ✅ STEP 5f: Queue Status Updated - REAL-TIME
-    const handleQueueStatusUpdated = (data: any) => {
-      console.log("📡 STEP 5f: Queue status updated:", data);
-      setQueueStatus({
-        queueNumber: data.queueNumber,
-        status: data.status,
-        position: data.position,
-        office: data.office,
-        estimatedTime: data.estimatedTime,
-        timestamp: data.timestamp,
-      });
-    };
-
-    // ✅ STEP 5g: Personal Info Changed
-    const handlePersonalInfoChanged = (data: any) => {
-      console.log("📡 STEP 5g: PersonalInfo changed:", data);
-      
-      if (data.status) {
-        setPersonalInfoStatus(data.status);
-      }
-
-      if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
-      refetchTimeoutRef.current = setTimeout(() => {
-        refetchData("Updated");
-      }, 500);
-    };
-
-    // ✅ On disconnect
-    const handleDisconnect = (reason: string) => {
-      console.log("❌ Socket disconnected:", reason);
-      setSocketConnected(false);
-    };
-
-    // ✅ Error handling
-    const handleConnectError = (error: any) => {
-      console.error("❌ Connection error:", error);
-    };
-
-    // ✅ Register all listeners
-    socket.on("connect", handleConnect);
-    socket.on('roomJoined', handleRoomJoined);
-    socket.on('personalInfoStatusUpdated', handlePersonalInfoStatusUpdated);
-    socket.on('walkinStatusUpdated', handleWalkinStatusUpdated);
-    socket.on('transactionStatusChanged', handleTransactionStatusChanged);
-    socket.on('singleTransactionUpdated', handleSingleTransactionUpdated);
-    socket.on('paymentStatusChanged', handlePaymentStatusChanged);
-    socket.on('allTransactionsUpdated', handleAllTransactionsUpdated);
-    socket.on('queueStatusUpdated', handleQueueStatusUpdated);
-    socket.on('personalInfoChanged', handlePersonalInfoChanged);
-    socket.on("disconnect", handleDisconnect);
-    socket.on("connect_error", handleConnectError);
-
-    // ✅ If already connected, call handleConnect immediately
+    // ✅ FIX 2: Handle already connected socket
     if (socket.connected) {
-      console.log("✅ Socket already connected, calling handleConnect immediately");
-      handleConnect();
+      console.log("✅ Socket already connected");
+      handlers.handleConnect();
     }
 
-    // ✅ Timeout: If connection takes too long, show error
+    // ✅ FIX 3: Better timeout handling
+    if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+    
     connectTimeoutRef.current = setTimeout(() => {
-      if (!socketConnected) {
-        console.error("⏱️ Socket connection timeout");
+      if (!socketRef.current?.connected) {
+        console.error("⏱️ Socket connection timeout - attempting reconnect");
+        try {
+          socket.connect();
+        } catch (err) {
+          console.error("❌ Reconnect failed:", err);
+        }
       }
-    }, 10000); // 10 second timeout
+    }, 10000);
 
-    // ✅ CLEANUP
-    return () => {
-      console.log("🧹 Cleaning up socket");
-      
-      if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
-      if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
-      
-      socket.off("connect", handleConnect);
-      socket.off("disconnect", handleDisconnect);
-      socket.off('roomJoined', handleRoomJoined);
-      socket.off('personalInfoStatusUpdated', handlePersonalInfoStatusUpdated);
-      socket.off('walkinStatusUpdated', handleWalkinStatusUpdated);
-      socket.off('transactionStatusChanged', handleTransactionStatusChanged);
-      socket.off('singleTransactionUpdated', handleSingleTransactionUpdated);
-      socket.off('paymentStatusChanged', handlePaymentStatusChanged);
-      socket.off('allTransactionsUpdated', handleAllTransactionsUpdated);
-      socket.off('queueStatusUpdated', handleQueueStatusUpdated);
-      socket.off('personalInfoChanged', handlePersonalInfoChanged);
-      socket.off("connect_error", handleConnectError);
-      
+  } catch (error) {
+    console.error("❌ Error setting up socket listeners:", error);
+    setSocketConnected(false);
+  }
+
+  // ✅ FIX 4: Proper cleanup with tracked handlers
+  return () => {
+    console.log("🧹 Cleaning up socket");
+    
+    // Clear timeouts
+    if (refetchTimeoutRef.current) {
+      clearTimeout(refetchTimeoutRef.current);
+      refetchTimeoutRef.current = null;
+    }
+    if (connectTimeoutRef.current) {
+      clearTimeout(connectTimeoutRef.current);
+      connectTimeoutRef.current = null;
+    }
+
+    // Remove all registered listeners
+    registeredHandlers.forEach(([event, handler]) => {
+      try {
+        socket.off(event, handler);
+      } catch (err) {
+        console.error(`❌ Error removing listener for ${event}:`, err);
+      }
+    });
+    registeredHandlers.length = 0; // Clear array
+
+    // Disconnect socket
+    try {
       disconnectRequestTransactionProcessSocket(personalInfoId);
-      socketRef.current = null;
-      setSocketConnected(false);
-    };
-  }, [personalInfoId, updateSingleTransaction, refetchData, fetchQueueStatus]);
+    } catch (err) {
+      console.error("❌ Error disconnecting socket:", err);
+    }
+
+    socketRef.current = null;
+    setSocketConnected(false);
+  };
+}, [personalInfoId, refetchData, createSocketHandlers, fetchQueueStatus]);
 
   // ✅ NAVIGATION ACTIONS
   const GoToHomeStack = useCallback(() => {
@@ -423,10 +345,8 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     async (id: number) => {
       try {
         setIsCancelling(true);
-
         await cancelTransactionRequest(id);
         await refetchData("Cancelled!");
-        
         return true;
       } catch (error: any) {
         console.error('❌ Cancel error:', error);
@@ -438,10 +358,10 @@ export const useRequestTransaction = (transactions: any[], personalInfoId: numbe
     [refetchData]
   );
 
-    // ✅ PUBLIC REFETCH FUNCTION - Exposed for external calls
+  // ✅ PUBLIC REFETCH FUNCTION
   const refetch = useCallback(async () => {
     console.log("🔄 Refetch called from component");
-    await refetchData("Manual refresh");
+    return await refetchData("Manual refresh");
   }, [refetchData]);
 
   return {

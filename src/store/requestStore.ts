@@ -31,7 +31,7 @@ export interface RegistrarRequestList {
   totalCost: number;
 }
 
-// ✅ CORRECTED: FormData interface
+// ✅ UPDATED: Added isVisitor & visitorName
 export interface FormData {
   email: string;
   Lrn: string;
@@ -43,6 +43,8 @@ export interface FormData {
   studentGradeLevel: string;
   studentSection: string;
   pictureID: string;
+  isVisitor: boolean;
+  visitorName: string;
 }
 
 interface RequestStore {
@@ -79,7 +81,7 @@ interface RequestStore {
   removeAccountingItem: (paymentName: string) => void;
   clearAccountingList: () => void;
   
-  // ✅ NEW: Build RequestTransact payload
+  // ✅ Build RequestTransact payload
   buildRequestTransactPayload: () => Record<string, any>;
 }
 
@@ -116,6 +118,8 @@ export const useRequestStore = create<RequestStore>((set, get) => ({
     studentGradeLevel: "",
     studentSection: "",
     pictureID: "",
+    isVisitor: false,
+    visitorName: "",
   },
 
   // ✅ Update global form data
@@ -126,7 +130,7 @@ export const useRequestStore = create<RequestStore>((set, get) => ({
         : { ...state.formData, ...updater }
     })),
 
-  // ✅ Reset form data (keep email)
+  // ✅ Reset form data (keep email, reset visitor fields)
   resetFormData: () =>
     set((state) => ({
       formData: {
@@ -139,7 +143,9 @@ export const useRequestStore = create<RequestStore>((set, get) => ({
         studentYearLevel: "",
         studentGradeLevel: "",
         studentSection: "",
-        pictureID: ""
+        pictureID: "",
+        isVisitor: false,
+        visitorName: "",
       },
     })),
 
@@ -240,7 +246,7 @@ export const useRequestStore = create<RequestStore>((set, get) => ({
       },
     })),
 
-  // ✅ NEW: Build RequestTransact payload for backend
+  // ✅ Build RequestTransact payload for backend
   buildRequestTransactPayload: () => {
     const state = get();
     

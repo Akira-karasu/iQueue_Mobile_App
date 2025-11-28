@@ -1,6 +1,6 @@
 import { useAuth } from "@/src/context/authContext";
-import React from "react";
-import { ActivityIndicator, FlatList, StyleSheet, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import ImageHeading from "@/src/components/layout/ImageHeading";
@@ -11,6 +11,31 @@ import HistoryTransaction from "./HistoryTransaction";
 
 export default function HomeScreen() {
   const { loading } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // ✅ Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    
+    try {
+      // ✅ Call your refresh functions here
+      console.log("🔄 Refreshing home screen data...");
+      
+      // Example: Refresh transactions, announcements, etc.
+      // await refetchTransactions();
+      // await refetchAnnouncements();
+      // await refetchEvents();
+      
+      // Add a small delay to show refresh animation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      console.log("✅ Data refreshed successfully");
+    } catch (error) {
+      console.error("❌ Refresh error:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   // Wait for auth to load token from storage
   if (loading) {
@@ -33,6 +58,18 @@ export default function HomeScreen() {
         keyExtractor={() => "dummy"}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ backgroundColor: "#F9F9F9", paddingBottom: 20 }}
+        
+        // ✅ ADD REFRESH CONTROL
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#19AF5B"
+            colors={["#19AF5B"]}
+            progressBackgroundColor="#ffffff"
+          />
+        }
+        
         ListHeaderComponent={() => (
           <>
             <ImageHeading />

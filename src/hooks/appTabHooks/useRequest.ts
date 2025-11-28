@@ -200,9 +200,11 @@ const handleDebug = React.useCallback(() => {
     "\nYear Level:", formData.studentYearLevel,
     "\nGrade Level:", formData.studentGradeLevel,
     "\nIs Alumni:", formData.isAlumni,
-    "\nPicture:", formData.pictureID
+    "\nPicture:", formData.pictureID,
+    "\nIs Visitor:", formData.isVisitor,
+    "\nVisitor Name:", formData.visitorName
   );
-  }, [formData]);
+}, [formData]);
 
   const AddToRegistrarRequestlist = React.useCallback(() => {
     if (!DocumentSelect) return;

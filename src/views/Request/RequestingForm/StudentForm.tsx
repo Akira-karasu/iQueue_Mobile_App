@@ -8,8 +8,9 @@ import ViewScroller from '@/src/components/scroller/ViewScroller';
 import { options } from '@/src/constant/data';
 import { useRequest } from '@/src/hooks/appTabHooks/useRequest';
 import { useRequestStore } from "@/src/store/requestStore";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import styles from './RequestFormStyle';
 
 type StudentFormProps = {
@@ -26,6 +27,18 @@ const StudentForm: React.FC<StudentFormProps> = ({ setSteps, open, step }) => {
     setFormData({ [key]: value });
   };
 
+  // ✅ Handle visitor checkbox toggle
+  const handleVisitorToggle = () => {
+    if (!formData.isVisitor) {
+      // Enabling
+      handleChange('isVisitor', true);
+    } else {
+      // Disabling - clear the name
+      handleChange('isVisitor', false);
+      handleChange('visitorName', '');
+    }
+  };
+
   const isNextDisabled =
     !formData.FirstName ||
     !formData.LastName ||
@@ -37,12 +50,43 @@ const StudentForm: React.FC<StudentFormProps> = ({ setSteps, open, step }) => {
 
   return (
     <ViewScroller>
-        <StepBar title="Fill your information"
+      <StepBar 
+        title="Fill your information"
         displayArrowLeft={false}
         displayArrowRight={false}
       />
       <View style={styles.mainContainer}>
         <Card padding={25}>
+
+          {/* ✅ CHECKBOX + VISITOR NAME */}
+          <View style={{ marginBottom: 5 }}>
+
+
+            {/* ✅ INPUT - Disabled when unchecked */}
+            <Input
+              label="Visitor Name"
+              placeholder="Enter Visitor Name"
+              value={formData.visitorName}
+              onChangeText={(value) => handleChange('visitorName', value)}
+              editable={formData.isVisitor}
+              opacity={formData.isVisitor ? 1 : 0.5}
+            />
+
+            <TouchableOpacity 
+              style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}
+              onPress={handleVisitorToggle}
+            >
+              <MaterialCommunityIcons
+                name={formData.isVisitor ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                size={24}
+                color={formData.isVisitor ? '#19AF5B' : '#AEAEAE'}
+              />
+              <Text style={{ marginLeft: 5 }}>
+                check if you are a visitor
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <Input
             label="LRN"
             placeholder="Enter Learner Reference Number"
