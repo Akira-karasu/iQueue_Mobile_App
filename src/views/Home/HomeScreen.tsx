@@ -6,8 +6,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import ImageHeading from "@/src/components/layout/ImageHeading";
 import UserBoarder from "@/src/components/layout/UserBoarder";
 import CurrentTransaction from "./CurrenTransaction";
-import EventAndAnnounce from "./EventAndAnnounce";
-import HistoryTransaction from "./HistoryTransaction";
 
 export default function HomeScreen() {
   const { loading } = useAuth();
@@ -73,9 +71,7 @@ export default function HomeScreen() {
         ListHeaderComponent={() => (
           <>
             <ImageHeading />
-            <EventAndAnnounce />
             <CurrentTransaction />
-            <HistoryTransaction />
           </>
         )}
         renderItem={() => null} // ✅ TypeScript fix
@@ -85,6 +81,6 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#19AF5B" },
+  safeArea: { flex: 1, backgroundColor: "#19AF5B", height: "100%" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

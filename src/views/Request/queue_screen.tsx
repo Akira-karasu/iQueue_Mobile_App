@@ -1,9 +1,10 @@
 import IconButton from "@/src/components/buttons/IconButton";
+import CurrentTransactionModal from "@/src/components/modals/CurrentTransactionModal.";
 import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransaction";
 import { RequestStackParamList } from '@/src/types/navigation';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,6 +20,7 @@ export default function QueueScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
+  const [showCurrentTransactionModal, setShowCurrentTransactionModal] = useState(false);
 
   // ✅ Get real-time data from socket
   const {
@@ -60,9 +62,36 @@ export default function QueueScreen() {
     return () => clearTimeout(timeout);
   }, [queueStatus]);
 
-  const goBack = () => {
-    navigation.navigate('Transaction', { transaction: queueData });
-  };
+  // ✅ CALLBACK: Navigate back with updated data
+  const goBack = useCallback(() => {
+    console.log('🔄 Navigating back to Transaction screen');
+    navigation.navigate('Transaction', { 
+      transaction: {
+        ...queueData,
+        transactions: activeTransactions,
+        personalInfo: {
+          ...queueData.personalInfo,
+          status: personalInfoStatus || queueData.personalInfo.status
+        }
+      }
+    });
+  }, [navigation, queueData, activeTransactions, personalInfoStatus]);
+
+
+
+  // ✅ Monitor for called status with position 1
+  useEffect(() => {
+    if (queueStatus?.status?.toLowerCase() === 'called' && queueStatus?.position === 1) {
+      console.log('🎯 CALLED! Position is 1 - Showing modal');
+      setShowCurrentTransactionModal(true);
+    }
+  }, [queueStatus?.status, queueStatus?.position]);
+
+  // ✅ Handle modal close
+  const handleModalClose = useCallback(() => {
+    console.log('✅ Modal closed');
+    setShowCurrentTransactionModal(false);
+  }, []);
 
   // ✅ LOGIC: Check if we have valid queue status
   const hasValidQueueStatus = useMemo(() => 
@@ -81,8 +110,6 @@ export default function QueueScreen() {
   );
 
   // ✅ LOGIC: Filter transactions by status and type
-
-  // SECTION 1: STATUS-BASED (Ready for Release, Claimed/Completed)
   const readyForReleaseDocuments = useMemo(() =>
     activeTransactions.filter(
       (transaction: any) => 
@@ -93,6 +120,7 @@ export default function QueueScreen() {
     [activeTransactions]
   );
 
+
   const claimedDocuments = useMemo(() =>
     activeTransactions.filter(
       (transaction: any) => 
@@ -102,13 +130,11 @@ export default function QueueScreen() {
     [activeTransactions]
   );
 
-  // ✅ Check if there are ready-for-release or completed documents
   const hasStatusBasedDocuments = useMemo(() =>
     readyForReleaseDocuments.length > 0 || claimedDocuments.length > 0,
     [readyForReleaseDocuments, claimedDocuments]
   );
 
-  // SECTION 2: PAYMENT-BASED (Unpaid, Paid, Cancelled)
   const unpaidDocuments = useMemo(() =>
     activeTransactions.filter(
       (transaction: any) => 
@@ -171,7 +197,6 @@ export default function QueueScreen() {
     [activeTransactions]
   );
 
-  // SECTION 3: COMPLETED (for summary only)
   const completedDocuments = useMemo(() =>
     activeTransactions.filter(
       (transaction: any) => 
@@ -190,7 +215,9 @@ export default function QueueScreen() {
     [activeTransactions]
   );
 
-  // ✅ LOGIC: Calculate totals - Exclude paid/cancelled if status-based documents exist
+  
+
+  // ✅ LOGIC: Calculate totals
   const calculateTotal = (documents: any[], payments: any[]) => {
     const docTotal = documents.reduce((sum, doc) => {
       const fee = parseFloat(doc.fee) || 0;
@@ -210,7 +237,6 @@ export default function QueueScreen() {
   const totalCompleted = useMemo(() => calculateTotal(completedDocuments, completedPayments), [completedDocuments, completedPayments]);
   const totalCancelled = useMemo(() => calculateTotal(cancelledDocuments, cancelledPayments), [cancelledDocuments, cancelledPayments]);
 
-  // ✅ LOGIC: Check status conditions
   const hasReadyForReleaseDocuments = readyForReleaseDocuments.length > 0;
   const hasClaimedDocuments = claimedDocuments.length > 0;
   const isQueueStatusCompleted = queueStatus?.status?.toLowerCase() === 'completed';
@@ -224,7 +250,23 @@ export default function QueueScreen() {
     code: queueData.personalInfo.transactionCode
   });
 
-  // ✅ LOGIC: Get status color based on queue status
+  // ✅ NEW: Auto-navigate back when queue status is completed
+  useEffect(() => {
+    if (
+      queueStatus?.status?.toLowerCase() === 'completed' && 
+      !hasReadyForReleaseDocuments
+    ) {
+      console.log('✅ Queue Completed! Auto-navigating back in 2 seconds...');
+      
+      const autoBackTimer = setTimeout(() => {
+        goBack();
+      }, 2000);
+      
+      return () => clearTimeout(autoBackTimer);
+    }
+  }, [queueStatus?.status, hasReadyForReleaseDocuments, goBack]);
+
+  // ✅ LOGIC: Get status color
   const getStatusColor = (status: string | undefined): string => {
     if (!status) return '#666';
     const statusMap: Record<string, string> = {
@@ -238,21 +280,19 @@ export default function QueueScreen() {
     return statusMap[status.toLowerCase()] || '#666';
   };
 
-// ✅ LOGIC: Get position display text
-const getPositionDisplay = (position: number | undefined, queueStatus: any): string => {
-  // ✅ Check if queue is completed first
-  if (queueStatus?.status?.toLowerCase() === 'completed') {
-    return '✅ COMPLETED';
-  }
-  
-  if (!position && position !== 0) return '-';
-  if (position === 0) return '🟢 ON GOING';
-  if (position === 1) return '🔴 NEXT';
-  
-  return `#${position}`;
-};
+  // ✅ LOGIC: Get position display text
+  const getPositionDisplay = (position: number | undefined, queueStatus: any): string => {
+    if (queueStatus?.status?.toLowerCase() === 'completed') {
+      return '✅ COMPLETED';
+    }
+    
+    if (!position && position !== 0) return '-';
+    if (position === 0) return '🟢 ON GOING';
+    if (position === 1) return '🔴 NEXT';
+    
+    return `#${position}`;
+  };
 
-  // ✅ LOGIC: Get transaction item count
   const getTransactionCount = (...arrays: any[][]): number => 
     arrays.reduce((sum, arr) => sum + arr.length, 0);
 
@@ -267,13 +307,11 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
           />
           <Text style={styles.headerTitle}>Queue Transaction</Text>
           
-          {/* Connection Status Indicator */}
           <View style={[
             styles.socketIndicator, 
             { backgroundColor: socketConnected ? "#19AF5B" : "#ff6f00" }
           ]} />
           
-          {/* Updating Indicator */}
           {isUpdating && (
             <ActivityIndicator 
               size="small" 
@@ -284,6 +322,16 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
+
+          {/* ✅ AUTO-NAVIGATE BANNER - Show when completed */}
+          {isQueueStatusCompleted && !hasReadyForReleaseDocuments && (
+            <View style={styles.autoNavigateBanner}>
+              <ActivityIndicator size="small" color="#19AF5B" style={{ marginRight: 8 }} />
+              <Text style={styles.autoNavigateText}>
+                ✅ Transaction completed! Returning to transaction details...
+              </Text>
+            </View>
+          )}
 
           {/* ✅ LOADING SCREEN - Waiting for queue status */}
           {isLoadingQueue && !hasValidQueueStatus ? (
@@ -301,7 +349,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
                   Please wait while we assign you a queue number...
                 </Text>
 
-                {/* Status dot */}
                 <View style={styles.statusIndicatorContainer}>
                   <View style={[
                     styles.statusDot,
@@ -315,13 +362,11 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
                   </Text>
                 </View>
 
-                {/* Transaction Code Display */}
                 <View style={styles.codeContainer}>
                   <Text style={styles.codeLabel}>Your Transaction Code</Text>
                   <Text style={styles.code}>{queueData.personalInfo.transactionCode}</Text>
                 </View>
 
-                {/* Tips */}
                 <View style={styles.tipContainer}>
                   <Text style={styles.tipIcon}>💡</Text>
                   <Text style={styles.tipText}>
@@ -330,8 +375,7 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
                 </View>
               </View>
             </View>
-          ) : !hasValidQueueStatus ? (
-            // NO QUEUE STATUS YET - Show QR Code
+          ) : queueStatus?.status?.toLowerCase() === 'temporary' || (queueStatus?.status?.toLowerCase() === 'completed' && hasReadyForReleaseDocuments) ? (
             <View style={styles.qrContainer}>
               <View style={styles.qrContent}>
                 <QRCode
@@ -347,7 +391,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
               </View>
             </View>
           ) : (
-            // HAS QUEUE STATUS - Show Live Queue Info
             <>
               {/* QUEUE NUMBER CARD */}
               <View style={[
@@ -356,13 +399,13 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
               ]}>
                 <View style={styles.queueNumberContent}>
                   <Text style={styles.queueLabel}>Your Queue Number</Text>
-                  <Text style={styles.queueNumber}>{queueStatus.queueNumber}</Text>
+                  <Text style={styles.queueNumber}>{queueStatus?.queueNumber}</Text>
                   
                   <View style={styles.queueInfoRow}>
                     <View style={styles.queueInfoItem}>
                       <Text style={styles.queueInfoLabel}>Position</Text>
                       <Text style={styles.queueInfoValue}>
-                        {getPositionDisplay(queueStatus.position)}
+                        {getPositionDisplay(queueStatus?.position, queueStatus)}
                       </Text>
                     </View>
                     
@@ -370,10 +413,10 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
                       <Text style={styles.queueInfoLabel}>Status</Text>
                       <View style={[
                         styles.statusPill,
-                        { backgroundColor: getStatusColor(queueStatus.status) }
+                        { backgroundColor: getStatusColor(queueStatus?.status) }
                       ]}>
                         <Text style={styles.statusPillText}>
-                          {queueStatus.status?.toUpperCase()}
+                          {queueStatus?.status?.toUpperCase()}
                         </Text>
                       </View>
                     </View>
@@ -389,11 +432,11 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
                   </View>
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>Office</Text>
-                    <Text style={styles.detailValue}>{queueStatus.office || 'N/A'}</Text>
+                    <Text style={styles.detailValue}>{queueStatus?.office || 'N/A'}</Text>
                   </View>
                 </View>
 
-                {queueStatus.estimatedTime && (
+                {queueStatus?.estimatedTime && (
                   <View style={styles.detailRow}>
                     <View style={styles.detailIcon}>
                       <Text style={styles.icon}>⏱️</Text>
@@ -404,7 +447,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
                     </View>
                   </View>
                 )}
-
               </View>
 
               {/* STATUS INDICATOR */}
@@ -418,7 +460,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
 
           {/* ✅ ALERT BANNERS */}
 
-          {/* Claimed Documents */}
           {hasClaimedDocuments && (
             <View style={styles.alertBanner}>
               <View style={[styles.alertBannerContent, { backgroundColor: '#e8f5e9', borderLeftColor: '#19AF5B' }]}>
@@ -433,7 +474,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
           
-          {/* Ready for Release */}
           {hasReadyForReleaseDocuments && (
             <View style={styles.alertBanner}>
               <View style={[styles.alertBannerContent, { backgroundColor: '#fff3cd', borderLeftColor: '#ffc107' }]}>
@@ -448,7 +488,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* Queue Completed */}
           {isQueueStatusCompleted && !hasReadyForReleaseDocuments && !hasClaimedDocuments && (
             <View style={styles.alertBanner}>
               <View style={[styles.alertBannerContent, { backgroundColor: '#e8f5e9', borderLeftColor: '#19AF5B' }]}>
@@ -461,7 +500,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* All Paid */}
           {isAllTransactionsPaidOrCancelled && activeTransactions.length > 0 && !hasReadyForReleaseDocuments && !hasClaimedDocuments && (
             <View style={styles.alertBanner}>
               <View style={[styles.alertBannerContent, { backgroundColor: '#e8f5e9', borderLeftColor: '#19AF5B' }]}>
@@ -474,13 +512,11 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-
-          {/* ✅ SUMMARY SECTION - Hide if status-based documents exist */}
+          {/* ✅ SUMMARY SECTION */}
           {!hasStatusBasedDocuments && (completedDocuments.length > 0 || completedPayments.length > 0 || unpaidDocuments.length > 0 || unpaidPayments.length > 0 || paidDocuments.length > 0 || paidPayments.length > 0 || cancelledDocuments.length > 0 || cancelledPayments.length > 0) && (
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>📊 Payment Summary</Text>
 
-              {/* Completed */}
               {(completedDocuments.length > 0 || completedPayments.length > 0) && (
                 <View style={styles.summaryItem}>
                   <View style={styles.summaryItemHeader}>
@@ -495,7 +531,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
                 </View>
               )}
 
-              {/* Paid */}
               {totalPaid > 0 && (
                 <View style={styles.summaryItem}>
                   <View style={styles.summaryItemHeader}>
@@ -510,7 +545,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
                 </View>
               )}
 
-              {/* Unpaid */}
               {totalUnpaid > 0 && (
                 <View style={styles.summaryItem}>
                   <View style={styles.summaryItemHeader}>
@@ -525,7 +559,6 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
                 </View>
               )}
 
-              {/* Cancelled */}
               {totalCancelled > 0 && (
                 <View style={[styles.summaryItem, { borderBottomWidth: 0 }]}>
                   <View style={styles.summaryItemHeader}>
@@ -542,9 +575,7 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* ========== SECTION 1: STATUS-BASED (Ready for Release, Claimed) ========== */}
-
-          {/* ✅ CLAIMED DOCUMENTS LIST */}
+          {/* CLAIMED DOCUMENTS LIST */}
           {hasClaimedDocuments && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -564,7 +595,7 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* ✅ READY FOR RELEASE DOCUMENTS LIST */}
+          {/* READY FOR RELEASE DOCUMENTS LIST */}
           {hasReadyForReleaseDocuments && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -584,9 +615,7 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* ========== SECTION 2: PAYMENT-BASED (Unpaid, Paid, Cancelled) - Hide if status-based documents exist ========== */}
-
-          {/* ✅ UNPAID DOCUMENTS LIST */}
+          {/* UNPAID DOCUMENTS LIST */}
           {!hasStatusBasedDocuments && unpaidDocuments.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -606,7 +635,7 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* ✅ UNPAID PAYMENTS LIST */}
+          {/* UNPAID PAYMENTS LIST */}
           {!hasStatusBasedDocuments && unpaidPayments.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -626,7 +655,7 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* ✅ PAID DOCUMENTS LIST - Hide if status-based documents exist */}
+          {/* PAID DOCUMENTS LIST */}
           {!hasStatusBasedDocuments && paidDocuments.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -646,7 +675,7 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* ✅ PAID PAYMENTS LIST - Hide if status-based documents exist */}
+          {/* PAID PAYMENTS LIST */}
           {!hasStatusBasedDocuments && paidPayments.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -666,7 +695,7 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* ✅ CANCELLED DOCUMENTS LIST - Hide if status-based documents exist */}
+          {/* CANCELLED DOCUMENTS LIST */}
           {!hasStatusBasedDocuments && cancelledDocuments.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -686,7 +715,7 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
 
-          {/* ✅ CANCELLED PAYMENTS LIST - Hide if status-based documents exist */}
+          {/* CANCELLED PAYMENTS LIST */}
           {!hasStatusBasedDocuments && cancelledPayments.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -715,12 +744,19 @@ const getPositionDisplay = (position: number | undefined, queueStatus: any): str
             </View>
           )}
         </ScrollView>
+
+        {/* ✅ Current Transaction Modal */}
+        <CurrentTransactionModal
+          visible={showCurrentTransactionModal}
+          onClose={handleModalClose}
+          queueNumber={queueStatus?.queueNumber}
+        />
       </View>
     </SafeAreaView>
   );
 }
 
-// ✅ DOCUMENT CARD COMPONENT - UPDATED with conditional payment status
+// ✅ DOCUMENT CARD COMPONENT
 function DocumentCard({ document, status }: { document: any; status: string }) {
   const statusColors = {
     ready: { bg: '#fffbea', border: '#ffc107', text: '#ff8c00' },
@@ -731,8 +767,6 @@ function DocumentCard({ document, status }: { document: any; status: string }) {
   };
 
   const colors = statusColors[status as keyof typeof statusColors] || statusColors.paid;
-
-  // ✅ Hide payment status for ready-for-release and claimed
   const showPaymentStatus = status !== 'ready' && status !== 'claimed';
 
   return (
@@ -768,7 +802,6 @@ function DocumentCard({ document, status }: { document: any; status: string }) {
         </View>
       </View>
 
-      {/* ✅ Only show payment status for unpaid, paid, and cancelled */}
       {showPaymentStatus && (
         <View style={styles.cardFooter}>
           <Text style={styles.paymentLabel}>Payment Status:</Text>
@@ -789,7 +822,7 @@ function DocumentCard({ document, status }: { document: any; status: string }) {
   );
 }
 
-// ✅ PAYMENT CARD COMPONENT - UPDATED with conditional payment status
+// ✅ PAYMENT CARD COMPONENT
 function PaymentCard({ payment, status }: { payment: any; status: string }) {
   const statusColors = {
     unpaid: { bg: '#fff', border: '#FF6B6B', text: '#FF6B6B' },
@@ -798,8 +831,6 @@ function PaymentCard({ payment, status }: { payment: any; status: string }) {
   };
 
   const colors = statusColors[status as keyof typeof statusColors] || statusColors.paid;
-
-  // ✅ Show payment status only for unpaid, paid, and cancelled
   const showPaymentStatus = status !== 'ready' && status !== 'claimed';
 
   return (
@@ -822,7 +853,6 @@ function PaymentCard({ payment, status }: { payment: any; status: string }) {
         </View>
       </View>
 
-      {/* ✅ Only show payment status for unpaid, paid, and cancelled */}
       {showPaymentStatus && (
         <View style={styles.cardFooter}>
           <Text style={styles.paymentLabel}>Payment Status:</Text>
@@ -856,8 +886,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-
-  // ✅ HEADER
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -881,33 +909,24 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
 
-  // ✅ LIVE UPDATE BANNER
-  liveUpdateBanner: {
+  // ✅ AUTO-NAVIGATE BANNER
+  autoNavigateBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e3f2fd',
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: '#e8f5e9',
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#2196f3',
+    borderLeftColor: '#19AF5B',
   },
-  liveUpdateIcon: {
-    fontSize: 16,
-  },
-  liveUpdateTitle: {
+  autoNavigateText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#1976d2',
-  },
-  liveUpdateSubtitle: {
-    fontSize: 11,
-    color: '#1976d2',
-    opacity: 0.8,
-    marginTop: 2,
+    fontWeight: '600',
+    color: '#19AF5B',
+    flex: 1,
   },
 
-  // ✅ QR CONTAINER
   qrContainer: {
     marginBottom: 24,
   },
@@ -947,7 +966,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ✅ LOADING SCREEN STYLES
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1049,7 +1067,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ✅ QUEUE NUMBER CARD
   queueNumberCard: {
     backgroundColor: '#19AF5B',
     borderRadius: 16,
@@ -1120,7 +1137,6 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-  // ✅ QUEUE DETAILS CARD
   queueDetailsCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -1168,7 +1184,6 @@ const styles = StyleSheet.create({
     color: '#222',
   },
 
-  // ✅ STATUS INDICATOR
   statusIndicator: {
     backgroundColor: '#e3f2fd',
     borderRadius: 8,
@@ -1184,7 +1199,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ✅ ALERT BANNERS
   alertBanner: {
     marginBottom: 16,
   },
@@ -1209,7 +1223,6 @@ const styles = StyleSheet.create({
     color: '#666',
   },
 
-  // ✅ SUMMARY CARD
   summaryCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -1254,7 +1267,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // ✅ SECTION
   section: {
     marginBottom: 20,
   },
@@ -1283,7 +1295,6 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-  // ✅ CARD
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -1327,7 +1338,6 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
 
-  // ✅ CARD GRID
   cardGrid: {
     flexDirection: 'row',
     paddingHorizontal: 12,
@@ -1351,7 +1361,6 @@ const styles = StyleSheet.create({
     color: '#222',
   },
 
-  // ✅ CARD FOOTER
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1374,7 +1383,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
 
-  // ✅ EMPTY STATE
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',

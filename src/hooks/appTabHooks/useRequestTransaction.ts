@@ -10,366 +10,262 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type HomeTabNavigationProp = BottomTabNavigationProp<AppTabsParamList, "HomeStack">;
 
-export const useRequestTransaction = (transactions: any[], personalInfoId: number) => {
-  // ✅ STATE
+export const useRequestTransaction = (transactions: any[] = [], personalInfoId?: number) => {
+  // ---------- Local state ----------
   const [isCancelling, setIsCancelling] = useState(false);
-  const [transactionStatus, setTransactionStatus] = useState<string | null>(null);
   const [personalInfoStatus, setPersonalInfoStatus] = useState<string | null>(null);
   const [refreshedTransactions, setRefreshedTransactions] = useState<any[]>([]);
   const [socketConnected, setSocketConnected] = useState(false);
   const [queueStatus, setQueueStatus] = useState<any>(null);
 
-  // ✅ REFS (for cleanup & socket management)
-  const socketRef = useRef<any>(null);
-  const reconnectAttemptRef = useRef(0);
-  const refetchTimeoutRef = useRef<any>(null);
-  const connectTimeoutRef = useRef<any>(null);
+  // ---------- Refs ----------
+  const socketRef = useRef<any | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const refetchDebounceRef = useRef<number | null>(null);
+  const mountRef = useRef(true);
+  const backoffTimeoutRef = useRef<any>(null);
 
-  // ✅ NAVIGATION
+  // ---------- Navigation ----------
   const TabNavigation = useNavigation<HomeTabNavigationProp>();
 
-  // ✅ INITIALIZE refreshedTransactions with transactions on mount - FIXED
+  // ---------- Initialize refreshedTransactions on mount ----------
   useEffect(() => {
-    if (refreshedTransactions.length === 0 && transactions.length > 0) {
-      console.log("📥 Initializing refreshedTransactions with:", transactions.length, "items");
-      setRefreshedTransactions([...transactions]); // ✅ Create new array reference
-    }
-  }, []); // ✅ FIXED: Empty dependency - only run on mount
+    setRefreshedTransactions(prev => (prev.length === 0 && transactions.length > 0 ? [...transactions] : prev));
+    mountRef.current = true;
 
-  // ✅ MEMOIZATION - activeTransactions from socket OR initial - FIXED
-  const activeTransactions = useMemo(() => {
-    const result = refreshedTransactions.length > 0 ? refreshedTransactions : transactions;
-    console.log("🔄 activeTransactions computed:", result.length, "items", {
-      fromSocket: refreshedTransactions.length > 0,
-      timestamp: new Date().toLocaleTimeString()
-    });
-    return result;
-  }, [refreshedTransactions, transactions]); // ✅ Depends on both arrays
-
-  // ✅ Debug: Log when data changes
-  useEffect(() => {
-    console.log("📊 activeTransactions changed:", {
-      count: activeTransactions.length,
-      transactions: activeTransactions.map(t => ({
-        id: t.id,
-        status: t.status,
-        paymentStatus: t.paymentStatus
-      }))
-    });
-  }, [activeTransactions]);
-
-  // ✅ OPTIMIZATION: Memoize grouped transactions separately
-  const groupedTransactions = useMemo(() => {
-    const grouped: Record<string, any[]> = {};
-    activeTransactions.forEach((t) => {
-      const type = t.transactionType || "Other";
-      if (!grouped[type]) {
-        grouped[type] = [];
+    return () => {
+      mountRef.current = false;
+      if (refetchDebounceRef.current) window.clearTimeout(refetchDebounceRef.current);
+      if (backoffTimeoutRef.current) clearTimeout(backoffTimeoutRef.current);
+      // safely disconnect socket on unmount
+      if (socketRef.current) {
+        try {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+          disconnectRequestTransactionProcessSocket(personalInfoId);
+        } catch (err) {
+          console.warn("⚠️ Socket disconnect failed on unmount", err);
+        }
       }
-      grouped[type].push(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---------- Derived transactions ----------
+  const activeTransactions = useMemo(() => {
+    return refreshedTransactions.length > 0 ? refreshedTransactions : transactions;
+  }, [refreshedTransactions, transactions]);
+
+  const groupedTransactions = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    (activeTransactions || []).forEach((t) => {
+      const key = t.transactionType || "Other";
+      if (!map[key]) map[key] = [];
+      map[key].push(t);
     });
-    return grouped;
+    return map;
   }, [activeTransactions]);
 
-  // ✅ OPTIMIZATION: Calculate totalCost efficiently
   const totalCost = useMemo(() => {
-    return activeTransactions.reduce((sum, t) => {
-      const fee = parseFloat(t.fee || "0") || 0;
-      const copies = parseInt(t.copies || "1") || 1;
-      return sum + (t.transactionType === "Payment" ? fee : fee * copies);
+    return (activeTransactions || []).reduce((acc, t) => {
+      const fee = Number.parseFloat(t?.fee ?? "0") || 0;
+      const copies = Number.parseInt(t?.copies ?? "1") || 1;
+      return acc + (t.transactionType === "Payment" ? fee : fee * copies);
     }, 0);
   }, [activeTransactions]);
 
-  // ✅ OPTIMIZATION: Simplify paymentStatus calculation
   const paymentStatus = useMemo(() => {
-    if (activeTransactions.length === 0) return "No Items";
-    const statuses = activeTransactions.map(t => t.paymentStatus?.toLowerCase());
+    if (!activeTransactions || activeTransactions.length === 0) return "No Items";
+    const statuses = activeTransactions.map(t => (t.paymentStatus ?? "").toString().toLowerCase());
     if (statuses.every(s => s === "paid")) return "Fully Paid";
     if (statuses.every(s => s === "unpaid")) return "Not Fully Paid";
     return "Partially Paid";
   }, [activeTransactions]);
 
-  // ✅ Fetch queue status
+  // ---------- Fetch queue status ----------
   const fetchQueueStatus = useCallback(async () => {
+    if (!personalInfoId) return null;
     try {
-      console.log("📊 Fetching queue status for personalInfoId:", personalInfoId);
-      const status = await getQueueStatusByPersonalId(personalInfoId);
-      if (status) {
-        console.log("✅ Queue status fetched:", status);
-        setQueueStatus(status);
-      }
-    } catch (error) {
-      console.error("❌ Failed to fetch queue status:", error);
-      setQueueStatus(null);
+      const q = await getQueueStatusByPersonalId(personalInfoId);
+      if (mountRef.current) setQueueStatus(q ?? null);
+      return q;
+    } catch (err) {
+      console.error("❌ fetchQueueStatus error:", err);
+      if (mountRef.current) setQueueStatus(null);
+      return null;
     }
   }, [personalInfoId]);
 
-  // ✅ OPTIMIZATION: Refetch function with better error handling
-  const refetchData = useCallback(async (statusMessage: string) => {
+  // ---------- Refetch transactions ----------
+  const refetchData = useCallback(async (reason = "manual") => {
+    if (!personalInfoId) return { success: false, error: "missing personalInfoId" };
     try {
-      console.log("🔄 Refetching data...", statusMessage);
       const response = await getRequestTransactionRequest(personalInfoId);
-      const updatedTransactions = Array.isArray(response?.transactions) 
-        ? response.transactions 
-        : Array.isArray(response) 
-          ? response 
-          : [];
-      const updatedStatus = response?.personalInfo?.status || null;
+      const updatedTransactions = Array.isArray(response?.transactions)
+        ? response.transactions
+        : Array.isArray(response)
+          ? response
+          : (response?.transactions ?? []);
+      const updatedStatus = response?.personalInfo?.status ?? response?.status ?? null;
 
-      if (updatedTransactions.length > 0) {
-        console.log("✅ Data refetched:", updatedTransactions.length, "items");
-        setRefreshedTransactions([...updatedTransactions]); // ✅ Create new reference
+      if (Array.isArray(updatedTransactions) && updatedTransactions.length > 0) {
+        if (mountRef.current) setRefreshedTransactions(() => [...updatedTransactions]);
       }
 
-      if (updatedStatus) {
-        console.log("✅ Updated personalInfoStatus:", updatedStatus);
-        setPersonalInfoStatus(updatedStatus);
-      }
+      if (updatedStatus && mountRef.current) setPersonalInfoStatus(updatedStatus);
 
-      // ✅ Fetch queue status after refetch
       await fetchQueueStatus();
 
       return { success: true, transactions: updatedTransactions, status: updatedStatus };
     } catch (error) {
-      console.error("❌ Refetch error:", error);
+      console.error("❌ refetchData error:", error);
       return { success: false, error };
     }
   }, [personalInfoId, fetchQueueStatus]);
 
-  // ✅ OPTIMIZATION: Update individual transaction more efficiently
-  const updateSingleTransaction = useCallback((transactionId: number, updates: any) => {
-    setRefreshedTransactions((prevTransactions) => {
-      const validTransactions = prevTransactions.length > 0 ? prevTransactions : transactions;
-
-      if (validTransactions.length === 0) return prevTransactions;
-
-      return validTransactions.map((transaction) =>
-        transaction.id === transactionId 
-          ? { ...transaction, ...updates }
-          : transaction
-      );
+  // ---------- Update single transaction ----------
+  const updateSingleTransaction = useCallback((transactionId: number, updates: Partial<any>) => {
+    setRefreshedTransactions(prev => {
+      const base = prev.length > 0 ? prev : transactions;
+      if (!base || base.length === 0) return prev;
+      let changed = false;
+      const next = base.map(item => {
+        if (item.id === transactionId) {
+          changed = true;
+          return { ...item, ...updates };
+        }
+        return item;
+      });
+      return changed ? next : prev;
     });
   }, [transactions]);
 
-  // ✅ OPTIMIZATION: Extract socket event handlers into separate functions
+  // ---------- Reset hook state ----------
+  const resetState = useCallback(() => {
+    setRefreshedTransactions([]);
+    setPersonalInfoStatus(null);
+    setQueueStatus(null);
+  }, []);
+
+  // ---------- Socket handlers ----------
   const createSocketHandlers = useCallback(() => {
     return {
-      handleConnect: () => {
-        console.log("✅ Socket connected");
-        reconnectAttemptRef.current = 0;
+      onConnect: () => {
+        reconnectAttemptsRef.current = 0;
         setSocketConnected(true);
-        socketRef.current?.emit('joinUserRoom', { personalInfoId });
+        try { socketRef.current?.emit?.('joinUserRoom', { personalInfoId }); } catch (err) {}
       },
-
-      handleRoomJoined: () => {
-        console.log("✅ Room joined");
-        if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+      onDisconnect: () => setSocketConnected(false),
+      onPersonalInfoStatusUpdated: (data: any) => {
+        const s = data?.status ?? null;
+        if (mountRef.current && s) setPersonalInfoStatus(s);
+        if (refetchDebounceRef.current) window.clearTimeout(refetchDebounceRef.current);
+        refetchDebounceRef.current = window.setTimeout(() => {
+          refetchData("socket:personalInfoStatusUpdated");
+          refetchDebounceRef.current = null;
+        }, 400);
       },
-
-      handleStatusUpdate: (data: any, source: string) => {
-        console.log(`📡 ${source}:`, data.status);
-        setPersonalInfoStatus(data.status);
-        if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
-        refetchTimeoutRef.current = setTimeout(() => {
-          refetchData(`${source}: ${data.status}`);
-        }, 500);
-      },
-
-      handleTransactionUpdate: (data: any) => {
-        const transactionId = data.transactionId || data.id;
-        console.log("📝 Updating single transaction:", transactionId, {
-          status: data.status,
-          paymentStatus: data.paymentStatus
-        });
-        updateSingleTransaction(transactionId, {
-          status: data.status,
-          paymentStatus: data.paymentStatus,
+      onTransactionUpdated: (data: any) => {
+        const txId = data?.transactionId ?? data?.id;
+        if (!txId) return;
+        updateSingleTransaction(Number(txId), {
+          status: data?.status ?? undefined,
+          paymentStatus: data?.paymentStatus ?? undefined,
         });
       },
-
-      handleAllTransactionsUpdated: (data: any) => {
-        const updatedTransactions = data.transactions || data;
-        if (Array.isArray(updatedTransactions) && updatedTransactions.length > 0) {
-          console.log("✅ Updating all transactions from socket:", updatedTransactions.length);
-          setRefreshedTransactions([...updatedTransactions]); // ✅ Create new reference
-        }
-        if (data.personalInfoStatus) {
-          console.log("✅ Updating personalInfoStatus:", data.personalInfoStatus);
-          setPersonalInfoStatus(data.personalInfoStatus);
-        }
+      onAllTransactionsUpdated: (data: any) => {
+        const incoming = Array.isArray(data?.transactions) ? data.transactions : (Array.isArray(data) ? data : []);
+        if (incoming && incoming.length > 0 && mountRef.current) setRefreshedTransactions(() => [...incoming]);
+        if (data?.personalInfoStatus && mountRef.current) setPersonalInfoStatus(data.personalInfoStatus);
       },
-
-      handleQueueStatusUpdated: (data: any) => {
-        console.log("📊 Queue status updated:", data);
-        setQueueStatus(data);
-      },
-
-      handleDisconnect: () => {
-        console.log("❌ Socket disconnected");
-        setSocketConnected(false);
-      },
+      onQueueStatusUpdated: (data: any) => { if (mountRef.current) setQueueStatus(data); },
+      onError: (err: any) => { console.error("❌ socket error", err); }
     };
   }, [personalInfoId, refetchData, updateSingleTransaction]);
 
- // ✅ SOCKET CONNECTION - MAIN EFFECT (FULLY FIXED)
-useEffect(() => {
-  if (!personalInfoId) {
-    console.warn("⚠️ Missing personalInfoId");
-    return;
-  }
+  // ---------- Socket connection effect ----------
+  useEffect(() => {
+    if (!personalInfoId) return;
 
-  console.log("📡 Setting up socket for personalInfoId:", personalInfoId);
-  setSocketConnected(false);
-  fetchQueueStatus();
+    if (socketRef.current) {
+      try { disconnectRequestTransactionProcessSocket(personalInfoId); } catch {}
+      socketRef.current = null;
+    }
 
-  const socket = getRequestTransactionProcessSocket(personalInfoId);
-  socketRef.current = socket;
+    const socket = getRequestTransactionProcessSocket(personalInfoId);
+    socketRef.current = socket;
+    const handlers = createSocketHandlers();
+    const registered: Array<{ event: string; handler: any }> = [];
 
-  const handlers = createSocketHandlers();
-  const registeredHandlers: Array<[string, any]> = [];
+    const register = (event: string, handler: any) => {
+      try { socket.on(event, handler); registered.push({ event, handler }); } catch {}
+    };
 
-  // ✅ FIX 1: Proper listener registration with tracking
-  const registerListener = (event: string, handler: any) => {
-    socket.on(event, handler);
-    registeredHandlers.push([event, handler]);
-  };
+    register("connect", handlers.onConnect);
+    register("disconnect", handlers.onDisconnect);
+    register("personalInfoStatusUpdated", handlers.onPersonalInfoStatusUpdated);
+    register("walkinStatusUpdated", handlers.onPersonalInfoStatusUpdated);
+    register("transactionStatusChanged", handlers.onTransactionUpdated);
+    register("singleTransactionUpdated", handlers.onTransactionUpdated);
+    register("paymentStatusChanged", handlers.onTransactionUpdated);
+    register("allTransactionsUpdated", handlers.onAllTransactionsUpdated);
+    register("queueStatusUpdated", handlers.onQueueStatusUpdated);
+    register("error", handlers.onError);
+    register("connect_error", handlers.onError);
 
-  try {
-    // ✅ Register all listeners
-    registerListener("connect", handlers.handleConnect);
-    registerListener("roomJoined", handlers.handleRoomJoined);
-    registerListener("personalInfoStatusUpdated", (data: any) => 
-      handlers.handleStatusUpdate(data, "PersonalInfo Updated")
-    );
-    registerListener("walkinStatusUpdated", (data: any) => 
-      handlers.handleStatusUpdate(data, "Walkin Updated")
-    );
-    registerListener("transactionStatusChanged", (data: any) => 
-      handlers.handleTransactionUpdate({ ...data, paymentStatus: data.paymentStatus })
-    );
-    registerListener("singleTransactionUpdated", handlers.handleTransactionUpdate);
-    registerListener("paymentStatusChanged", (data: any) => 
-      handlers.handleTransactionUpdate({ ...data, status: data.status })
-    );
-    registerListener("allTransactionsUpdated", handlers.handleAllTransactionsUpdated);
-    registerListener("queueStatusUpdated", handlers.handleQueueStatusUpdated);
-    registerListener("personalInfoChanged", (data: any) => {
-      if (data.status) setPersonalInfoStatus(data.status);
-      if (refetchTimeoutRef.current) clearTimeout(refetchTimeoutRef.current);
-      refetchTimeoutRef.current = setTimeout(() => refetchData("PersonalInfo Changed"), 500);
-    });
-    registerListener("disconnect", handlers.handleDisconnect);
-    registerListener("connect_error", (error: any) => {
-      console.error("❌ Connection error:", error);
+    if (socket?.connected && typeof handlers.onConnect === "function") handlers.onConnect();
+
+    fetchQueueStatus().catch(() => {});
+
+    return () => {
+      registered.forEach(({ event, handler }) => {
+        try { socket.off(event, handler); } catch {}
+      });
+      try { disconnectRequestTransactionProcessSocket(personalInfoId); } catch {}
+      socketRef.current = null;
       setSocketConnected(false);
-    });
-    registerListener("error", (error: any) => {
-      console.error("❌ Socket error:", error);
-    });
+      resetState(); // <-- Reset when unmounting
+    };
+  }, [personalInfoId, createSocketHandlers, fetchQueueStatus, resetState]);
 
-    // ✅ FIX 2: Handle already connected socket
-    if (socket.connected) {
-      console.log("✅ Socket already connected");
-      handlers.handleConnect();
-    }
-
-    // ✅ FIX 3: Better timeout handling
-    if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
-    
-    connectTimeoutRef.current = setTimeout(() => {
-      if (!socketRef.current?.connected) {
-        console.error("⏱️ Socket connection timeout - attempting reconnect");
-        try {
-          socket.connect();
-        } catch (err) {
-          console.error("❌ Reconnect failed:", err);
-        }
-      }
-    }, 10000);
-
-  } catch (error) {
-    console.error("❌ Error setting up socket listeners:", error);
-    setSocketConnected(false);
-  }
-
-  // ✅ FIX 4: Proper cleanup with tracked handlers
-  return () => {
-    console.log("🧹 Cleaning up socket");
-    
-    // Clear timeouts
-    if (refetchTimeoutRef.current) {
-      clearTimeout(refetchTimeoutRef.current);
-      refetchTimeoutRef.current = null;
-    }
-    if (connectTimeoutRef.current) {
-      clearTimeout(connectTimeoutRef.current);
-      connectTimeoutRef.current = null;
-    }
-
-    // Remove all registered listeners
-    registeredHandlers.forEach(([event, handler]) => {
-      try {
-        socket.off(event, handler);
-      } catch (err) {
-        console.error(`❌ Error removing listener for ${event}:`, err);
-      }
-    });
-    registeredHandlers.length = 0; // Clear array
-
-    // Disconnect socket
-    try {
-      disconnectRequestTransactionProcessSocket(personalInfoId);
-    } catch (err) {
-      console.error("❌ Error disconnecting socket:", err);
-    }
-
-    socketRef.current = null;
-    setSocketConnected(false);
-  };
-}, [personalInfoId, refetchData, createSocketHandlers, fetchQueueStatus]);
-
-  // ✅ NAVIGATION ACTIONS
+  // ---------- Navigation helpers ----------
   const GoToHomeStack = useCallback(() => {
+    try {
+      if (socketRef.current) { socketRef.current.disconnect(); socketRef.current = null; }
+      disconnectRequestTransactionProcessSocket(personalInfoId);
+      resetState();
+    } catch (err) { console.warn("⚠️ Failed to disconnect on GoToHomeStack", err); }
     TabNavigation.navigate("HomeStack");
-  }, [TabNavigation]);
+  }, [TabNavigation, personalInfoId, resetState]);
 
   const GoToQueueScreen = useCallback((queueData: any) => {
-    TabNavigation.navigate("RequestStack", {
-      screen: "Queue",
-      params: { queueData, queueStatus },
-    });
+    TabNavigation.navigate("RequestStack", { screen: "Queue", params: { queueData, queueStatus } });
   }, [TabNavigation, queueStatus]);
 
-  // ✅ CANCEL REQUEST
-  const handleCancelRequest = useCallback(
-    async (id: number) => {
-      try {
-        setIsCancelling(true);
-        await cancelTransactionRequest(id);
-        await refetchData("Cancelled!");
-        return true;
-      } catch (error: any) {
-        console.error('❌ Cancel error:', error);
-        throw error;
-      } finally {
-        setIsCancelling(false);
-      }
-    },
-    [refetchData]
-  );
-
-  // ✅ PUBLIC REFETCH FUNCTION
-  const refetch = useCallback(async () => {
-    console.log("🔄 Refetch called from component");
-    return await refetchData("Manual refresh");
+  // ---------- Cancel request ----------
+  const handleCancelRequest = useCallback(async (id: number) => {
+    if (!id) throw new Error("Missing id");
+    try {
+      setIsCancelling(true);
+      await cancelTransactionRequest(id);
+      await refetchData("canceled");
+      return true;
+    } catch (err) {
+      console.error("❌ handleCancelRequest error:", err);
+      throw err;
+    } finally {
+      if (mountRef.current) setIsCancelling(false);
+    }
   }, [refetchData]);
+
+  const refetch = useCallback(async () => refetchData("manual refresh"), [refetchData]);
 
   return {
     groupedTransactions,
     activeTransactions,
     totalCost,
     paymentStatus,
-    transactionStatus,
+    transactionStatus: null,
     personalInfoStatus,
     queueStatus,
     socketConnected,
@@ -381,5 +277,6 @@ useEffect(() => {
     updateSingleTransaction,
     fetchQueueStatus,
     refetch,
+    resetState,
   };
 };

@@ -55,13 +55,14 @@ export default function CancelRequestTransaction({
               title="Keep Request"
               onPress={onClose}
               disabled={isCancelling}
-              style={styles.button}
+              fontSize={15}
             />
             <Button
               title={isCancelling ? "Cancelling..." : "Cancel Request"}
               onPress={handleCancel}
               disabled={isCancelling}
-              style={[styles.button, styles.dangerButton]}
+              backgroundColor="#d32f2f"
+              fontSize={15}
             />
           </View>
 
@@ -84,6 +85,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     width: "80%",
+    flexDirection: "column",
+    alignItems: "center",
     gap: 15,
   },
   title: {
@@ -95,6 +98,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     lineHeight: 20,
+    textAlign: "center",
   },
   errorText: {
     color: "#d32f2f",

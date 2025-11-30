@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "193724755880",
+    "project_id": "iqueue-pushnotification",
+    "storage_bucket": "iqueue-pushnotification.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:193724755880:android:1c8835b197c5b0d7c5f79d",
+        "android_client_info": {
+          "package_name": "com.iqueue.pushnotification"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZrPjfIdDvsFBsgOZXVeV4XQ8iX3djOi8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

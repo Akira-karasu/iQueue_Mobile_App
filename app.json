@@ -21,7 +21,9 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.iris010.iqueuemobileapp"
+      // "package": "com.iris010.iqueuemobileapp",
+      "package": "com.iqueue.pushnotification",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -29,6 +31,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       [
         "expo-splash-screen",
         {

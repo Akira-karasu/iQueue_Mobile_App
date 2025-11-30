@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import usePushNotifications from '../hooks/componentHooks/usePushNotifications.';
 
 // ✅ Define the shape of the Auth context
 type AuthContextType = {
@@ -17,6 +18,7 @@ type AuthContextType = {
   saveToken: (newToken: string | null) => void;
   isTokenExpired: () => Promise<boolean>;
   getUser: () => { id: string | null; email: string | null };
+  expoPushToken: string | null;
 };
 
 // ✅ Props for the provider
@@ -28,6 +30,7 @@ type AuthProviderProps = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const { expoPushToken } = usePushNotifications();
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -115,6 +118,7 @@ const logout = async () => {
         saveToken,
         isTokenExpired,
         getUser,
+        expoPushToken,
       }}
     >
       {children}

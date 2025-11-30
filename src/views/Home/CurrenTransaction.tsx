@@ -72,6 +72,7 @@ export default function CurrentTransaction() {
   if (loading) {
     return (
       <View style={styles.center}>
+        <Text>Loading current transactions...</Text>
         <ActivityIndicator size="large" color="#1EBA60" />
       </View>
     );
@@ -81,7 +82,7 @@ export default function CurrentTransaction() {
 
   return (
     <View style={styles.containerList}>
-      <Text style={styles.title}>Current Transaction</Text>
+      <Text style={styles.title}>Request Transactions</Text>
 
       <FlatList
         data={displayedData}
@@ -101,7 +102,7 @@ export default function CurrentTransaction() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", height: 500 },
   containerList: { padding: 20, marginTop: 20 },
   title: { fontSize: 18, fontWeight: "800", color: "#1EBA60", marginBottom: 10 },
   emptyText: { textAlign: "center", padding: 20, color: "#666" },

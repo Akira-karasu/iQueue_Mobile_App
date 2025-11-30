@@ -176,7 +176,8 @@ export default function RequestTransaction() {
   // ✅ OPTIMIZATION: Extract personal info data into constant
   const personalInfoData = useMemo(() => [
     ["Transaction Id", initialTransaction.personalInfo.id],
-    ["Full Name", fullName],
+    ["Visitor Name", initialTransaction.personalInfo.visitorName],
+    ["Student Name", fullName],
     ["Email", initialTransaction.personalInfo.email],
     ["Grade", initialTransaction.personalInfo.grade],
     ["Section", initialTransaction.personalInfo.section],
@@ -230,7 +231,7 @@ export default function RequestTransaction() {
             {shouldShowQRButton && (
               <View style={styles.buttonContainer}>
                 <Button
-                  title="View QR code"
+                  title="View Queue Transaction"
                   onPress={handleQRPress}
                   fontSize={18}
                 />
