@@ -18,6 +18,7 @@ export default function CurrentTransaction() {
       id: string;
       email: string;
       createdAt: string;
+      status?: string; // Add status field
     };
   };
 
@@ -27,6 +28,7 @@ export default function CurrentTransaction() {
   const [fullData, setFullData] = useState<{ users: UserData[] }>({ users: [] });
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<"all" | "pending" | "processing" | "completed">("all");
 
   // Fetch data function
   const fetchTransactions = useCallback(() => {
@@ -57,13 +59,26 @@ export default function CurrentTransaction() {
     };
   }, [email]);
 
-  // Fetch on screen focus (when you navigate back)
+  // Fetch on screen focus
   useFocusEffect(
     useCallback(() => {
       const cleanup = fetchTransactions();
       return cleanup;
     }, [fetchTransactions])
   );
+
+  // ✅ Filter transactions based on selected status
+  const getFilteredData = useCallback(() => {
+    let filtered = fullData.users;
+
+    if (selectedFilter !== "all") {
+      filtered = fullData.users.filter(
+        (item) => item.personalInfo.status?.toLowerCase() === selectedFilter
+      );
+    }
+
+    return showAll ? filtered : filtered.slice(0, 3);
+  }, [fullData.users, selectedFilter, showAll]);
 
   const renderItem = useCallback(({ item }: { item: UserData }) => {
     return <TransactionCard item={item} />;
@@ -78,21 +93,49 @@ export default function CurrentTransaction() {
     );
   }
 
-  const displayedData = showAll ? fullData.users : fullData.users.slice(0, 3);
+  const displayedData = getFilteredData();
+  const filteredCount = selectedFilter === "all" 
+    ? fullData.users.length 
+    : fullData.users.filter(item => item.personalInfo.status?.toLowerCase() === selectedFilter).length;
 
   return (
     <View style={styles.containerList}>
       <Text style={styles.title}>Request Transactions</Text>
 
+      {/* ✅ Filter Selection */}
+      <View style={styles.filterContainer}>
+        {["all", "pending", "processing", "completed"].map((filter) => (
+          <TouchableOpacity
+            key={filter}
+            onPress={() => setSelectedFilter(filter as any)}
+            style={[
+              styles.filterButton,
+              selectedFilter === filter && styles.filterButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                selectedFilter === filter && styles.filterButtonTextActive,
+              ]}
+            >
+              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <FlatList
         data={displayedData}
         keyExtractor={(item, index) => `${item.personalInfo.email}-${index}`}
         renderItem={renderItem}
-        ListEmptyComponent={<Text style={styles.emptyText}>No transactions found</Text>}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No {selectedFilter} transactions found</Text>
+        }
         scrollEnabled={false}
       />
 
-      {fullData.users.length > 3 && (
+      {filteredCount > 3 && (
         <TouchableOpacity onPress={() => setShowAll(!showAll)} style={styles.button}>
           <Text style={styles.buttonText}>{showAll ? "Show Less" : "Show All"}</Text>
         </TouchableOpacity>
@@ -105,6 +148,34 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center", height: 500 },
   containerList: { padding: 20, marginTop: 20 },
   title: { fontSize: 18, fontWeight: "800", color: "#1EBA60", marginBottom: 10 },
+  
+  // ✅ Filter styles
+  filterContainer: {
+    flexDirection: "row",
+    marginBottom: 15,
+    gap: 8,
+  },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    backgroundColor: "#f5f5f5",
+  },
+  filterButtonActive: {
+    backgroundColor: "#1EBA60",
+    borderColor: "#1EBA60",
+  },
+  filterButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#666",
+  },
+  filterButtonTextActive: {
+    color: "#fff",
+  },
+  
   emptyText: { textAlign: "center", padding: 20, color: "#666" },
   button: {
     marginTop: 10,

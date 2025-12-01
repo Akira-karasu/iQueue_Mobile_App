@@ -20,10 +20,6 @@ export default function ProfileScreen() {
 
         <View style={style.profileContainer}>
           <Image source={require('../../../assets/icons/boy.png')} style={style.Profileimage}/>
-          <View>
-            <Text style={style.userName}>Mobile user</Text>
-            <Text style={style.userId}>ID: 31245433</Text>
-          </View>
           <View style={style.containerButton}>
              <Pressable 
               style={style.pressableButton}

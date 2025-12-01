@@ -25,34 +25,53 @@ const [validationMessage, setValidationMessage] = useState(' ');
 const [isLoading, setIsLoading] = useState(false);
 
 const handleLogin = async () => {
-setIsLoading(true);
+  setIsLoading(true);
 
-const authValidation = validateAuth(email, password);
+  const authValidation = validateAuth(email, password);
 
-if (!authValidation.valid) {
-  setValidationMessage(authValidation.message || '');
-  setIsLoading(false);
-  return;
-}
-
-setValidationMessage(' ');
-
-try {
-  const user = await authService().login(email, password);
-  console.log('User logged in:', user);
-  console.log('Token being saved:', user.access_token);
-  login(user.access_token);
-} catch (error: any) {
-  if (error.message === 'User is registered but not verified'){
-    navigation.navigate('Otp', { email });
-  }else{
-    setValidationMessage(error.message);
+  if (!authValidation.valid) {
+    setValidationMessage(authValidation.message || '');
+    setIsLoading(false);
+    return;
   }
-} finally {
-  setIsLoading(false);
-}
 
+  setValidationMessage(' ');
 
+  try {
+    const response = await authService().login(email, password);
+    
+    console.log('✅ Login response:', JSON.stringify(response, null, 2));
+    
+    // ✅ Extract the token from nested structure
+    let tokenString = response.access_token;
+    
+    // ✅ If access_token is an object, get the nested access_token
+    if (typeof tokenString === 'object' && tokenString?.access_token) {
+      tokenString = tokenString.access_token;
+    }
+    
+    console.log('🎯 Final token string:', tokenString);
+    console.log('🎯 Token type:', typeof tokenString);
+    
+    if (!tokenString || typeof tokenString !== 'string') {
+      console.error('❌ Invalid token:', tokenString);
+      setValidationMessage('Invalid token received');
+      setIsLoading(false);
+      return;
+    }
+    
+    // ✅ Pass ONLY the token string
+    login(tokenString);
+    
+  } catch (error: any) {
+    if (error.message === 'User is registered but not verified') {
+      navigation.navigate('Otp', { email });
+    } else {
+      setValidationMessage(error.message);
+    }
+  } finally {
+    setIsLoading(false);
+  }
 };
 
 const goToForgotPassword = () => navigation.navigate('Forgot', { email } );

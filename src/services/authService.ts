@@ -55,6 +55,16 @@ export function authService() {
     }
   }
 
+
+  const getUserInfo = async (id: number) => {
+    try {
+      const response = await api.get(`/mobile-users/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch user');
+    }
+  };
+
   const pushToken = async (token: string) => {
     try {
       const response = await api.post('/notification/PushNotif_test', { token });
@@ -64,24 +74,73 @@ export function authService() {
     }
   }
 
-  const storePushToken = async (id: number,token: string) => {
-    try {
-      const response = await api.patch('/mobile-users/push-token', { id, token });
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Storing push token failed');
+const storePushToken = async (id: number, token: string) => {
+  try {
+    // ✅ Validation
+    if (!id || !token) {
+      throw new Error('User ID and token are required');
     }
+
+    console.log('📤 Sending push token:', { id, token });
+
+    const response = await api.patch(`/mobile-users/${id}/push-token`, { 
+      app_pushToken: token
+    });
+    
+    console.log('✅ Push token stored successfully:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Storing push token failed:', {
+      status: error.response?.status,
+      message: error.response?.data?.message,
+      fullError: error.response?.data,
+    });
+    throw new Error(
+      error.response?.data?.message || 
+      'Failed to store push token'
+    );
   }
+};
+
+const changeEmail = async (id: number, newEmail: string) => {
+  console.log("🔄 changeEmail called with:", { id, newEmail });
+  try {
+    // ✅ Validate
+    if (!newEmail || newEmail.trim() === '') {
+      throw new Error('Please enter a new email address');
+    }
+
+    if (!newEmail.includes('@')) {
+      throw new Error('Please enter a valid email address');
+    }
+
+    // ✅ Send newEmail, not email
+    const response = await api.patch(`/mobile-users/${id}/change-email`, { 
+      newEmail: newEmail.toLowerCase().trim() // ✅ MUST be newEmail
+    });
+    
+    console.log('✅ Email changed successfully:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error:', error.response?.data?.message || error.message);
+    throw new Error(error.response?.data?.message || 'Email change failed');
+  }
+};
+
+
+
 
   return {
     register,
     register_send_otp,
     forgot_send_otp,
     otp_verify,
+    getUserInfo,
     changePass,
     pushToken,
+    storePushToken,
     login,
-    storePushToken
+    changeEmail
   };
 }
 

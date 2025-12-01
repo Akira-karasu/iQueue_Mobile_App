@@ -6,6 +6,7 @@ import CancelRequestTransaction from "@/src/components/modals/CancelRequestTrans
 import { useRequestTransaction } from "@/src/hooks/appTabHooks/useRequestTransaction";
 import useModal from "@/src/hooks/componentHooks/useModal";
 import { RequestStackParamList } from "@/src/types/navigation";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { RouteProp, useRoute } from "@react-navigation/native";
 import React, { useCallback, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -13,27 +14,30 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 type TransactionRouteProp = RouteProp<RequestStackParamList, "Transaction">;
 
-// ✅ OPTIMIZATION: Extract color logic into constants
 const STATUS_COLORS = {
-  completed: "#19AF5B",
-  cancelled: "#d32f2f",
-  readyForRelease: "#19AF5B",
-  pending: "#ff6f00",
-  paid: "#19AF5B",
-  unpaid: "#d32f2f",
-  default: "#666"
+  completed: "#10B981",
+  cancelled: "#EF4444",
+  readyForRelease: "#10B981",
+  pending: "#F59E0B",
+  processing: "#3B82F6",
+  paid: "#10B981",
+  unpaid: "#EF4444",
+  default: "#6B7280"
 };
 
-// ✅ OPTIMIZATION: Extract helper functions
 const getStatusColor = (status: string | null | undefined, type: "status" | "payment" = "status") => {
   if (!status) return STATUS_COLORS.default;
   const lower = status.toLowerCase();
-  
-  if (type === "status") {
-    return STATUS_COLORS[lower as keyof typeof STATUS_COLORS] || STATUS_COLORS.default;
-  } else {
-    return lower === "paid" ? STATUS_COLORS.paid : lower === "unpaid" ? STATUS_COLORS.unpaid : STATUS_COLORS.default;
-  }
+  return STATUS_COLORS[lower as keyof typeof STATUS_COLORS] || STATUS_COLORS.default;
+};
+
+const getStatusIcon = (status: string) => {
+  const lower = status?.toLowerCase() || "";
+  if (lower === "completed" || lower === "paid" || lower === "ready-for-release") return "check-circle";
+  if (lower === "pending") return "schedule";
+  if (lower === "processing") return "hourglass-top";
+  if (lower === "cancelled" || lower === "unpaid") return "cancel";
+  return "info";
 };
 
 const formatFullName = (firstName: string, middleName: string, lastName: string) => {
@@ -43,7 +47,7 @@ const formatFullName = (firstName: string, middleName: string, lastName: string)
 const formatDate = (date: string | null) => {
   if (!date) return null;
   return new Date(date).toLocaleString("en-US", {
-    month: "long", day: "numeric", year: "numeric",
+    month: "short", day: "numeric", year: "numeric",
     hour: "numeric", minute: "2-digit", hour12: true,
   });
 };
@@ -67,7 +71,6 @@ export default function RequestTransaction() {
     refetch,
   } = useRequestTransaction(initialTransaction.transactions, personalInfoId);
 
-  // ✅ OPTIMIZATION: Remove unnecessary logs from handlers
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -79,7 +82,6 @@ export default function RequestTransaction() {
     }
   }, [refetch]);
 
-  // ✅ OPTIMIZATION: Combine related filters into single memos
   const { requestDocuments, requestPayments } = useMemo(() => {
     return {
       requestDocuments: activeTransactions.filter(t => t.transactionType === "Request Document"),
@@ -92,7 +94,6 @@ export default function RequestTransaction() {
     [requestDocuments]
   );
 
-  // ✅ OPTIMIZATION: Combine cost calculation logic
   const { nonCancelledItems, totalCost } = useMemo(() => {
     const nonCancelled = activeTransactions.filter(item => item.status?.toLowerCase() !== "cancelled");
     const total = nonCancelled.reduce((sum, item) => {
@@ -103,7 +104,6 @@ export default function RequestTransaction() {
     return { nonCancelledItems: nonCancelled, totalCost: total };
   }, [activeTransactions]);
 
-  // ✅ OPTIMIZATION: Combine payment status logic
   const { allCancelled, allNonCancelledPaid, summaryPaymentStatus, summaryStatusColor } = useMemo(() => {
     const cancelled = nonCancelledItems.length === 0;
     const paid = nonCancelledItems.every(item => item.paymentStatus?.toLowerCase() === "paid");
@@ -111,11 +111,10 @@ export default function RequestTransaction() {
       allCancelled: cancelled,
       allNonCancelledPaid: paid,
       summaryPaymentStatus: cancelled ? "All Canceled" : paid ? "Fully Paid" : "Not Fully Paid",
-      summaryStatusColor: cancelled ? "#d32f2f" : paid ? "#19AF5B" : "#ff6f00",
+      summaryStatusColor: cancelled ? STATUS_COLORS.cancelled : paid ? STATUS_COLORS.paid : STATUS_COLORS.pending,
     };
   }, [nonCancelledItems]);
 
-  // ✅ OPTIMIZATION: Use computed value directly
   const currentPersonalInfoStatus = personalInfoStatus || initialTransaction.personalInfo.status;
 
   const isPersonalInfoPending = useMemo(() =>
@@ -128,44 +127,20 @@ export default function RequestTransaction() {
     [currentPersonalInfoStatus]
   );
 
-  // ✅ OPTIMIZATION: Memoize status summaries
-  const transactionStatusSummary = useMemo(() => {
-    if (activeTransactions.length === 0) return "No Transactions";
-    const statuses = activeTransactions.map(t => t.status?.toLowerCase());
-    if (statuses.every(s => s === "completed")) return "All Completed";
-    if (statuses.every(s => s === "pending")) return "All Pending";
-    if (statuses.every(s => s === "cancelled")) return "All Cancelled";
-    return "Mixed Status";
-  }, [activeTransactions]);
-
-  const paymentStatusSummary = useMemo(() => {
-    if (activeTransactions.length === 0) return "No Payments";
-    const statuses = activeTransactions.map(t => t.paymentStatus?.toLowerCase());
-    if (statuses.every(s => s === "paid")) return "All Paid";
-    if (statuses.every(s => s === "unpaid")) return "All Unpaid";
-    return "Partially Paid";
-  }, [activeTransactions]);
-
-  // ✅ OPTIMIZATION: Memoize button visibility with cleaner logic
-const shouldShowQRButton = useMemo(() => {
-  if (isPersonalInfoPending || isPersonalInfoCancelled) return false;
-  
-  const hasReadyForRelease = requestDocuments.some(d => d.status?.toLowerCase() === "ready-for-release");
-  const hasPendingUnpaid = requestDocuments.some(d => 
-    d.status?.toLowerCase() === "pending" && d.paymentStatus?.toLowerCase() === "unpaid"
-  );
-  
-  // ✅ NEW: Check if all documents and payments are unpaid
-  const allUnpaid = activeTransactions.every(item => 
-    item.paymentStatus?.toLowerCase() === "unpaid"
-  );
-  
-  return hasReadyForRelease || hasPendingUnpaid || allUnpaid;
-}, [requestDocuments, activeTransactions, isPersonalInfoPending, isPersonalInfoCancelled]);
+  const shouldShowQRButton = useMemo(() => {
+    if (isPersonalInfoPending || isPersonalInfoCancelled) return false;
+    const hasReadyForRelease = requestDocuments.some(d => d.status?.toLowerCase() === "ready-for-release");
+    const hasPendingUnpaid = requestDocuments.some(d => 
+      d.status?.toLowerCase() === "pending" && d.paymentStatus?.toLowerCase() === "unpaid"
+    );
+    const allUnpaid = activeTransactions.every(item => 
+      item.paymentStatus?.toLowerCase() === "unpaid"
+    );
+    return hasReadyForRelease || hasPendingUnpaid || allUnpaid;
+  }, [requestDocuments, activeTransactions, isPersonalInfoPending, isPersonalInfoCancelled]);
 
   const shouldShowCancelButton = isPersonalInfoPending;
 
-  // ✅ OPTIMIZATION: Precompute formatted values
   const fullName = useMemo(() =>
     formatFullName(
       initialTransaction.personalInfo.firstName,
@@ -179,20 +154,6 @@ const shouldShowQRButton = useMemo(() => {
     formatDate(initialTransaction.personalInfo.createdAt),
     [initialTransaction.personalInfo.createdAt]
   );
-
-  // ✅ OPTIMIZATION: Extract personal info data into constant
-  const personalInfoData = useMemo(() => [
-    ["Transaction Id", initialTransaction.personalInfo.id],
-    ["Visitor Name", initialTransaction.personalInfo.visitorName],
-    ["Student Name", fullName],
-    ["Email", initialTransaction.personalInfo.email],
-    ["Grade", initialTransaction.personalInfo.grade],
-    ["Section", initialTransaction.personalInfo.section],
-    ["School Year", initialTransaction.personalInfo.schoolYear],
-    ["Student LRN", initialTransaction.personalInfo.studentLrn],
-    ["Alumni", initialTransaction.personalInfo.isAlumni ? "Yes" : "No"],
-    ["Created At", createdAt],
-  ], [initialTransaction.personalInfo, fullName, createdAt]);
 
   const handleQRPress = useCallback(() => {
     GoToQueueScreen({ 
@@ -208,10 +169,11 @@ const shouldShowQRButton = useMemo(() => {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.container}>
-        {/* Header */}
+        {/* ✅ Redesigned Header */}
         <View style={styles.header}>
           <IconButton onPress={GoToHomeStack} icon={require("../../../assets/icons/arrowWhite.png")} />
-          <Text style={styles.headerTitle}>Request Transaction Details</Text>
+          <Text style={styles.headerTitle}>Transaction Details</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         <ScrollView 
@@ -220,81 +182,118 @@ const shouldShowQRButton = useMemo(() => {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor="#19AF5B"
-              titleColor="#19AF5B"
+              tintColor="#10B981"
+              titleColor="#10B981"
               title="Pull to refresh"
               progressBackgroundColor="#fff"
             />
           }
         >
-          {/* Transaction Status & Buttons */}
-          <View style={styles.statusContainer}>
-            <TransactionStatus
+          {/* ✅ Status Badge Card */}
+             <TransactionStatus
               status={currentPersonalInfoStatus || null}
               count_readyForRelease={readyForReleaseCount}
               goback={GoToHomeStack}
             />
-
+          {/* ✅ Action Buttons */}
+          <View style={styles.buttonsGrid}>
             {shouldShowQRButton && (
-              <View style={styles.buttonContainer}>
-                <Button
-                  title="View Queue Transaction"
-                  onPress={handleQRPress}
-                  fontSize={18}
-                />
-              </View>
+              <Button
+                title="View Queue"
+                onPress={handleQRPress}
+                fontSize={14}
+              />
             )}
-
             {shouldShowCancelButton && (
-              <View style={styles.buttonContainer}>
-                <Button 
-                  title="Cancel Request" 
-                  onPress={open} 
-                  fontSize={18}
-                />
-              </View>
+              <Button 
+                title="Cancel Request" 
+                onPress={open} 
+                fontSize={14}
+              />
             )}
           </View>
 
-          {/* Personal Info Card */}
-          <Card>
-            <Text style={styles.sectionTitle}>Personal Information</Text>
-            {personalInfoData.map(([key, value]) => (
-              <View style={styles.infoRow} key={key as string}>
-                <Text style={styles.infoKey}>{key}</Text>
-                <Text style={styles.infoValue}>{value || "-"}</Text>
+          {/* ✅ Personal Info Card - Redesigned */}
+          <Card style={styles.personalInfoCard}>
+            <View style={styles.cardHeader}>
+              <MaterialIcons name="person" size={20} color="#10B981" />
+              <Text style={styles.cardTitle}>Personal Information</Text>
+            </View>
+            
+            <View style={styles.personalInfoGrid}>
+              <InfoItem label="Name" value={fullName} />
+              <InfoItem label="Email" value={initialTransaction.personalInfo.email} />
+              <InfoItem label="Student LRN" value={initialTransaction.personalInfo.studentLrn} />
+              <InfoItem label="Grade" value={initialTransaction.personalInfo.grade} />
+              <InfoItem label="Section" value={initialTransaction.personalInfo.section} />
+              <InfoItem label="School Year" value={initialTransaction.personalInfo.schoolYear} />
+              <InfoItem label="Alumni" value={initialTransaction.personalInfo.isAlumni ? "Yes" : "No"} />
+              <InfoItem label="Created" value={createdAt} />
+            </View>
+          </Card>
+
+          {/* ✅ Transaction Summary - Redesigned */}
+          <View style={styles.summaryGrid}>
+            <Card style={styles.summaryCard}>
+              <View style={styles.summaryCardContent}>
+                <MaterialIcons name="attach-money" size={28} color="#10B981" />
+                <Text style={styles.summaryLabel}>Total Amount</Text>
+                <Text style={styles.summaryAmount}>₱{totalCost.toFixed(2)}</Text>
               </View>
-            ))}
-          </Card>
+            </Card>
 
-          {/* Transaction Summary */}
-          <Card style={styles.summaryCard}>
-            <Text style={styles.sectionTitle}>Transaction Summary</Text>
-            <Text style={styles.total}>Total: ₱{totalCost.toFixed(2)}</Text>
-            <Text style={styles.status}>
-              Payment Status: <Text style={[styles.statusValue, { color: summaryStatusColor }]}>{summaryPaymentStatus}</Text>
-            </Text>
-          </Card>
+            <Card style={styles.summaryCard}>
+              <View style={styles.summaryCardContent}>
+                <MaterialIcons name="payment" size={28} color={summaryStatusColor} />
+                <Text style={styles.summaryLabel}>Payment Status</Text>
+                <Text style={[styles.summaryAmount, { color: summaryStatusColor, fontSize: 16 }]}>
+                  {summaryPaymentStatus}
+                </Text>
+              </View>
+            </Card>
+          </View>
 
-          {/* Request Documents */}
+          {/* ✅ Request Documents - Redesigned */}
           {requestDocuments.length > 0 && (
             <Card style={styles.transactionsCard}>
-              <Text style={styles.sectionTitle}>
-                Request Documents {readyForReleaseCount > 0 && <Text style={{ color: "#19AF5B" }}>({readyForReleaseCount} ready)</Text>}
-              </Text>
-              {requestDocuments.map((doc) => (
-                <TransactionItemRow key={doc.id} transaction={doc} type="document" />
-              ))}
+              <View style={styles.cardHeader}>
+                <MaterialIcons name="description" size={20} color="#10B981" />
+                <Text style={styles.cardTitle}>
+                  Request Documents ({requestDocuments.length})
+                </Text>
+              </View>
+              <View style={styles.transactionsList}>
+                {requestDocuments.map((doc, index) => (
+                  <TransactionItemRow 
+                    key={doc.id} 
+                    transaction={doc} 
+                    type="document"
+                    isLast={index === requestDocuments.length - 1}
+                  />
+                ))}
+              </View>
             </Card>
           )}
 
-          {/* Request Payments */}
+          {/* ✅ Request Payments - Redesigned */}
           {requestPayments.length > 0 && (
             <Card style={styles.transactionsCard}>
-              <Text style={styles.sectionTitle}>Request Payments</Text>
-              {requestPayments.map((pay) => (
-                <TransactionItemRow key={pay.id} transaction={pay} type="payment" />
-              ))}
+              <View style={styles.cardHeader}>
+                <MaterialIcons name="receipt" size={20} color="#3B82F6" />
+                <Text style={styles.cardTitle}>
+                  Request Payments ({requestPayments.length})
+                </Text>
+              </View>
+              <View style={styles.transactionsList}>
+                {requestPayments.map((pay, index) => (
+                  <TransactionItemRow 
+                    key={pay.id} 
+                    transaction={pay} 
+                    type="payment"
+                    isLast={index === requestPayments.length - 1}
+                  />
+                ))}
+              </View>
             </Card>
           )}
 
@@ -313,56 +312,273 @@ const shouldShowQRButton = useMemo(() => {
   );
 }
 
-// ✅ OPTIMIZATION: Extract repeated transaction row rendering
-const TransactionItemRow = React.memo(({ transaction, type }: { transaction: any; type: "document" | "payment" }) => {
+// ✅ Info Item Component
+const InfoItem = React.memo(({ label, value }: { label: string; value: string | null | undefined }) => (
+  <View style={styles.infoItem}>
+    <Text style={styles.infoLabel}>{label}</Text>
+    <Text style={styles.infoValue}>{value || "-"}</Text>
+  </View>
+));
+
+// ✅ Redesigned Transaction Row
+const TransactionItemRow = React.memo(({ 
+  transaction, 
+  type, 
+  isLast 
+}: { 
+  transaction: any; 
+  type: "document" | "payment";
+  isLast: boolean;
+}) => {
   const fee = parseFloat(transaction.fee) || 0;
   const copies = transaction.copies || 1;
   const total = fee * copies;
+  const statusColor = getStatusColor(transaction.status, "status");
+  const paymentColor = getStatusColor(transaction.paymentStatus, "payment");
 
   return (
-    <View style={styles.transactionRow}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.transactionItem}>{transaction.transactionDetails || "-"}</Text>
-        {type === "document" && <Text style={styles.smallText}>Copies: {copies}</Text>}
-        <Text style={[styles.smallText, { color: getStatusColor(transaction.status, "status") }]}>
-          Status: {transaction.status || "-"}
-        </Text>
-        <Text style={[styles.smallText, { color: getStatusColor(transaction.paymentStatus, "payment") }]}>
-          Payment: {transaction.paymentStatus || "-"}
-        </Text>
+    <>
+      <View style={styles.transactionItemContainer}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.transactionItemTitle}>{transaction.transactionDetails || "-"}</Text>
+          
+          <View style={styles.transactionMeta}>
+            {type === "document" && (
+              <View style={styles.metaTag}>
+                <MaterialIcons name="content-copy" size={14} color="#666" />
+                <Text style={styles.metaText}>×{copies}</Text>
+              </View>
+            )}
+            
+            <View style={[styles.metaTag, { backgroundColor: statusColor + "20" }]}>
+              <MaterialIcons name={getStatusIcon(transaction.status) as any} size={12} color={statusColor} />
+              <Text style={[styles.metaText, { color: statusColor, fontWeight: "600" }]}>
+                {transaction.status}
+              </Text>
+            </View>
+
+            <View style={[styles.metaTag, { backgroundColor: paymentColor + "20" }]}>
+              <MaterialIcons name={getStatusIcon(transaction.paymentStatus) as any} size={12} color={paymentColor} />
+              <Text style={[styles.metaText, { color: paymentColor, fontWeight: "600" }]}>
+                {transaction.paymentStatus}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.priceColumn}>
+          {type === "document" && (
+            <Text style={styles.unitPrice}>₱{fee.toFixed(2)}/pc</Text>
+          )}
+          <Text style={styles.totalPrice}>₱{total.toFixed(2)}</Text>
+        </View>
       </View>
-      <View style={styles.feeColumn}>
-        {type === "document" && (
-          <Text style={styles.transactionFee}>₱{fee.toFixed(2)} x {copies}</Text>
-        )}
-        <Text style={[styles.transactionFee, { color: "#19AF5B", fontWeight: "700" }]}>
-          ₱{total.toFixed(2)}
-        </Text>
-      </View>
-    </View>
+      {!isLast && <View style={styles.divider} />}
+    </>
   );
 });
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#19AF5B" },
-  container: { flex: 1, backgroundColor: "#F9F9F9" },
-  header: { flexDirection: "row", alignItems: "center", backgroundColor: "#19AF5B", paddingVertical: 15, paddingHorizontal: 10 },
-  buttonContainer: { padding: 20 },
-  statusContainer: { alignItems: "center", backgroundColor: "#fff", padding: 15 },
-  headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700", marginLeft: 10 },
-  content: { padding: 20, gap: 15 },
-  sectionTitle: { fontWeight: "700", marginBottom: 8, color: "#19AF5B" },
-  infoRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
-  infoKey: { fontSize: 13, fontWeight: "600", color: "#555" },
-  infoValue: { fontSize: 15, color: "#222" },
-  transactionRow: { flexDirection: "row", justifyContent: "space-between", marginVertical: 6 },
-  transactionItem: { color: "#333", fontSize: 16, fontWeight: "600" },
-  smallText: { fontSize: 12, color: "#666" },
-  transactionFee: { color: "#222", fontWeight: "600" },
-  feeColumn: { alignItems: "flex-end", gap: 4 },
-  total: { fontWeight: "700", fontSize: 16, color: "#222", marginBottom: 8 },
-  status: { fontWeight: "600", marginTop: 3, color: "#333" },
-  statusValue: { fontWeight: "700" },
-  transactionsCard: { marginTop: 10 },
-  summaryCard: { marginTop: 10 },
+  safeArea: { flex: 1, backgroundColor: "#10B981" },
+  container: { flex: 1, backgroundColor: "#F3F4F6" },
+  
+  // ✅ Header
+  header: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "space-between",
+    backgroundColor: "#10B981", 
+    paddingVertical: 16, 
+    paddingHorizontal: 16,
+    elevation: 2,
+  },
+  headerTitle: { 
+    color: "#fff", 
+    fontSize: 18, 
+    fontWeight: "700", 
+    flex: 1,
+    textAlign: "center",
+  },
+  
+  // ✅ Content
+  content: { 
+    padding: 16, 
+    gap: 16,
+  },
+
+  // ✅ Status Badge Card
+  statusBadgeCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    elevation: 2,
+  },
+  statusBadgeContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  statusBadgeCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  statusBadgeLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  statusBadgeValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
+  readyBadge: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  readyBadgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  // ✅ Buttons
+  buttonsGrid: {
+    gap: 12,
+  },
+
+  // ✅ Cards
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+    flex: 1,
+  },
+
+    // ✅ Personal Info
+  personalInfoCard: {
+    backgroundColor: "#fff",
+  },
+  personalInfoGrid: {
+    flexDirection: "column",
+    gap: 12,
+  },
+  infoItem: {
+    backgroundColor: "#F9FAFB",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  infoValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+
+
+  // ✅ Summary
+  summaryGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 16,
+  },
+  summaryCardContent: {
+    alignItems: "center",
+    gap: 8,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  summaryAmount: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#10B981",
+  },
+
+  // ✅ Transactions
+  transactionsCard: {
+    backgroundColor: "#fff",
+  },
+  transactionsList: {
+    gap: 0,
+  },
+  transactionItemContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingVertical: 12,
+    gap: 12,
+  },
+  transactionItemTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  transactionMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  metaTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 6,
+  },
+  metaText: {
+    fontSize: 11,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  priceColumn: {
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  unitPrice: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  totalPrice: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#10B981",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+  },
 });

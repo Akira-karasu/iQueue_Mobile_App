@@ -88,7 +88,6 @@ const style = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: "#F9F9F9",
-
   },
 
   shapeCircleImage: {
@@ -128,8 +127,8 @@ const style = StyleSheet.create({
   profileContainer: {
     zIndex: 2,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
+    justifyContent: 'flex-start',
+    height: '60%',
   }
 
 });

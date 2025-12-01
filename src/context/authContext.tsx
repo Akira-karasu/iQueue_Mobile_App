@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import usePushNotifications from '../hooks/componentHooks/usePushNotifications.';
+import { authService } from '../services/authService';
 
 // ✅ Define the shape of the Auth context
 type AuthContextType = {
@@ -48,7 +49,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setLoading(false);
       }
     };
-
     loadToken();
   }, []);
 
@@ -78,6 +78,40 @@ const getUser = () => {
 
 
 const login = (newToken: string) => {
+  try {
+    // ✅ Validate token is a string
+    if (typeof newToken !== 'string') {
+      console.error('❌ Invalid token type - Expected string, got:', typeof newToken);
+      console.error('❌ Token value:', newToken);
+      return;
+    }
+
+    if (!newToken.trim()) {
+      console.error('❌ Token is empty or whitespace');
+      return;
+    }
+
+    // ✅ Decode token to get user data
+    const decoded: any = jwtDecode(newToken);
+    
+    console.log('✅ Login successful');
+    console.log('📋 Full decoded token:', JSON.stringify(decoded, null, 2));
+    console.log('Available fields:', Object.keys(decoded));
+    
+    // Try common field name variations
+    const userId = decoded.id ?? decoded.sub ?? decoded.user_id ?? decoded.userId ?? null;
+    const userEmail = decoded.email ?? decoded.mail ?? decoded.user_email ?? null;
+
+    authService().storePushToken(userId, expoPushToken || '')
+
+    console.log('User ID:', userId);
+    console.log('PushToken:', expoPushToken);
+    
+  } catch (error) {
+    console.error('❌ Error decoding token:', error);
+  }
+  
+  // ✅ Save token after extracting user data
   saveToken(newToken);
 };
 
