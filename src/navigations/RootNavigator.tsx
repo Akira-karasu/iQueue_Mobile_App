@@ -13,12 +13,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   useKeepAwake();
-  const { token, loading, expoPushToken } = useAuth(); // ✅ use token + loading from context
+  const { token, loading } = useAuth();
+
 
 useEffect(() => {
     try {
       console.log('Axios instance base URL:', api.defaults.baseURL);
-      console.log('Expo Push Token:', expoPushToken);
     } catch (error) {
       console.error('API connection error:', error);
     }

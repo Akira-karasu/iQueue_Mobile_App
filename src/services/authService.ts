@@ -55,13 +55,33 @@ export function authService() {
     }
   }
 
+  const pushToken = async (token: string) => {
+    try {
+      const response = await api.post('/notification/PushNotif_test', { token });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Push token registration failed');
+    }
+  }
+
+  const storePushToken = async (id: number,token: string) => {
+    try {
+      const response = await api.patch('/mobile-users/push-token', { id, token });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Storing push token failed');
+    }
+  }
+
   return {
     register,
     register_send_otp,
     forgot_send_otp,
     otp_verify,
     changePass,
-    login
+    pushToken,
+    login,
+    storePushToken
   };
 }
 

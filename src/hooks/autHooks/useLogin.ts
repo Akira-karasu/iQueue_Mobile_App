@@ -13,7 +13,9 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, '
 
 export function useLogin() {
 
-  const { login } = useAuth();
+  const { login, getUser } = useAuth();
+
+  const Getuser = getUser();
 
 const navigation = useNavigation<LoginScreenNavigationProp>();
 

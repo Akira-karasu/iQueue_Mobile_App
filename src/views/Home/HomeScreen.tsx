@@ -55,7 +55,7 @@ export default function HomeScreen() {
         data={[]} // dummy data
         keyExtractor={() => "dummy"}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ backgroundColor: "#F9F9F9", paddingBottom: 20 }}
+        contentContainerStyle={{ backgroundColor: "#F9F9F9", paddingBottom: 20, flexGrow: 1 }}
         
         // ✅ ADD REFRESH CONTROL
         refreshControl={

@@ -80,12 +80,23 @@ export default function QueueScreen() {
 
 
   // ✅ Monitor for called status with position 1
-  useEffect(() => {
-    if (queueStatus?.status?.toLowerCase() === 'called' && queueStatus?.position === 1) {
-      console.log('🎯 CALLED! Position is 1 - Showing modal');
-      setShowCurrentTransactionModal(true);
-    }
-  }, [queueStatus?.status, queueStatus?.position]);
+useEffect(() => {
+  if (
+    queueStatus?.status?.toLowerCase() === 'called' && 
+    queueStatus?.position === 1
+  ) {
+    console.log('🎯 CALLED! Position is 1 - Showing modal');
+    setShowCurrentTransactionModal(true);
+  }
+}, [queueStatus?.status, queueStatus?.position]);
+
+useEffect(() => {
+  const status = queueStatus?.status?.toLowerCase();
+  if (status === 'in-process' || status === 'completed') {
+    console.log('✅ Queue status changed to', status, '- Hiding modal');
+    setShowCurrentTransactionModal(false);
+  }
+}, [queueStatus?.status]);
 
   // ✅ Handle modal close
   const handleModalClose = useCallback(() => {
