@@ -147,14 +147,21 @@ export default function RequestTransaction() {
   }, [activeTransactions]);
 
   // ✅ OPTIMIZATION: Memoize button visibility with cleaner logic
-  const shouldShowQRButton = useMemo(() => {
-    if (isPersonalInfoPending || isPersonalInfoCancelled) return false;
-    const hasReadyForRelease = requestDocuments.some(d => d.status?.toLowerCase() === "ready-for-release");
-    const hasPendingUnpaid = requestDocuments.some(d => 
-      d.status?.toLowerCase() === "pending" && d.paymentStatus?.toLowerCase() === "unpaid"
-    );
-    return hasReadyForRelease || hasPendingUnpaid;
-  }, [requestDocuments, isPersonalInfoPending, isPersonalInfoCancelled]);
+const shouldShowQRButton = useMemo(() => {
+  if (isPersonalInfoPending || isPersonalInfoCancelled) return false;
+  
+  const hasReadyForRelease = requestDocuments.some(d => d.status?.toLowerCase() === "ready-for-release");
+  const hasPendingUnpaid = requestDocuments.some(d => 
+    d.status?.toLowerCase() === "pending" && d.paymentStatus?.toLowerCase() === "unpaid"
+  );
+  
+  // ✅ NEW: Check if all documents and payments are unpaid
+  const allUnpaid = activeTransactions.every(item => 
+    item.paymentStatus?.toLowerCase() === "unpaid"
+  );
+  
+  return hasReadyForRelease || hasPendingUnpaid || allUnpaid;
+}, [requestDocuments, activeTransactions, isPersonalInfoPending, isPersonalInfoCancelled]);
 
   const shouldShowCancelButton = isPersonalInfoPending;
 
