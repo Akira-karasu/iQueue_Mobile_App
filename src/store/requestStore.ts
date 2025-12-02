@@ -83,9 +83,44 @@ interface RequestStore {
   
   // ✅ Build RequestTransact payload
   buildRequestTransactPayload: () => Record<string, any>;
+
+  refetchRemoteData: () => Promise<void>;
+
+
 }
 
 export const useRequestStore = create<RequestStore>((set, get) => ({
+
+
+  refetchRemoteData: async () => {
+  try {
+    const docsResp = await getDocuments();
+    const docs =
+      Array.isArray(docsResp) ? docsResp :
+      Array.isArray((docsResp as any).data) ? (docsResp as any).data :
+      Array.isArray((docsResp as any).documents) ? (docsResp as any).documents :
+      documents;
+    useRequestStore.setState({ availableDocuments: docs });
+    console.log("📄 Fetched documents:", docs);
+  } catch (err: any) {
+    console.warn("❌ getDocuments failed, using local documents:", err?.message || err);
+    useRequestStore.setState({ availableDocuments: documents });
+  }
+
+  try {
+    const paysResp = await getPayments();
+    const pays =
+      Array.isArray(paysResp) ? paysResp :
+      Array.isArray((paysResp as any).data) ? (paysResp as any).data :
+      Array.isArray((paysResp as any).payments) ? (paysResp as any).payments :
+      payment;
+    useRequestStore.setState({ availablePayments: pays });
+    console.log("💵 Fetched payments:", pays);
+  } catch (err: any) {
+    console.warn("❌ getPayments failed, using local payments:", err?.message || err);
+    useRequestStore.setState({ availablePayments: payment });
+  }
+  },
 
   setEmailFromToken: (email: string) =>
     set((state) => ({
@@ -275,32 +310,6 @@ export const useRequestStore = create<RequestStore>((set, get) => ({
 }));
 
 // 🔄 Fetch remote data
-(async function fetchAndSetRemoteData() {
-  try {
-    const docsResp = await getDocuments();
-    const docs =
-      Array.isArray(docsResp) ? docsResp :
-      Array.isArray((docsResp as any).data) ? (docsResp as any).data :
-      Array.isArray((docsResp as any).documents) ? (docsResp as any).documents :
-      documents;
-    useRequestStore.setState({ availableDocuments: docs });
-    console.log("📄 Fetched documents:", docs);
-  } catch (err: any) {
-    console.warn("❌ getDocuments failed, using local documents:", err?.message || err);
-    useRequestStore.setState({ availableDocuments: documents });
-  }
-
-  try {
-    const paysResp = await getPayments();
-    const pays =
-      Array.isArray(paysResp) ? paysResp :
-      Array.isArray((paysResp as any).data) ? (paysResp as any).data :
-      Array.isArray((paysResp as any).payments) ? (paysResp as any).payments :
-      payment;
-    useRequestStore.setState({ availablePayments: pays });
-    console.log("💵 Fetched payments:", pays);
-  } catch (err: any) {
-    console.warn("❌ getPayments failed, using local payments:", err?.message || err);
-    useRequestStore.setState({ availablePayments: payment });
-  }
+(async () => {
+  await useRequestStore.getState().refetchRemoteData();
 })();

@@ -36,6 +36,7 @@ export function useRequest() {
     AccountingRequestList,
     resetFormData,
     setRegistrarRequestList,
+    refetchRemoteData
   } = useRequestStore();
 
 
@@ -143,8 +144,8 @@ const removePayment = (paymentName: string) => {
 const handleSubmitTransaction = React.useCallback(
   async (close: () => void) => {
     try {
-      console.log('🚀 Starting transaction submission...');
-      
+      console.log("🚀 Starting transaction submission...");
+
       const updatedTransactions = {};
 
       if (RegistrarRequestList.requestList.length > 0) {
@@ -155,17 +156,22 @@ const handleSubmitTransaction = React.useCallback(
         updatedTransactions.AccountingOffice = AccountingRequestList;
       }
 
-      setFormData((prev) => ({
-        ...prev,
+      // ❗ Create a fresh complete payload
+      const finalPayload = {
+        ...formData,
         RequestTransaction: updatedTransactions,
-      }));
+      };
 
+      // ❗ Save to store (not needed for payload)
+      setFormData(finalPayload);
 
-      console.log('📤 Submitting transaction...');
-      const response = await submitRequestTransaction(formData, updatedTransactions);
-      console.log('✅ Transaction submitted successfully:', response);
+      console.log("📤 SENDING PAYLOAD:", finalPayload);
 
-      console.log('🏠 Navigating to HomeStack...');
+      const response = await submitRequestTransaction(finalPayload, updatedTransactions);
+      console.log("✅ Submitted:", response);
+
+      await refetchRemoteData();
+
       GoToHomeStack();
 
       clearRegistrarRequestList();
@@ -184,9 +190,9 @@ const handleSubmitTransaction = React.useCallback(
     clearAccountingList,
     GoToHomeStack,
     setFormData,
-    submitRequestTransaction,
   ]
 );
+
 
 const handleDebug = React.useCallback(() => {
   console.log(
@@ -204,12 +210,17 @@ const handleDebug = React.useCallback(() => {
     "\nIs Visitor:", formData.isVisitor,
     "\nVisitor Name:", formData.visitorName
   );
+
+  console.log("📄 Registrar Request List:", RegistrarRequestList);
+  console.log("💰 Accounting Request List:", AccountingRequestList);
+
 }, [formData]);
 
   const AddToRegistrarRequestlist = React.useCallback(() => {
     if (!DocumentSelect) return;
 
     const itemWithTotal = {
+      id: DocumentSelect.id, 
       ...DocumentSelect,
       Total: DocumentSelect.Price * (DocumentSelect.Quantity || 1),
     };
@@ -239,6 +250,7 @@ const handleDebug = React.useCallback(() => {
       clearRegistrarRequestList();
       clearAccountingList();
       setDocumentSelect(null);
+      refetchRemoteData();
       close();
     },
     [
@@ -246,6 +258,7 @@ const handleDebug = React.useCallback(() => {
       setSteps,
       setRegistrarRequestList,
       resetDocuments,
+      refetchRemoteData,
       clearRegistrarRequestList,
       clearAccountingList,
       setDocumentSelect,
