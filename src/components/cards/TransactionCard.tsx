@@ -53,7 +53,7 @@ function TransactionCard({ item }: { item: any }) {
         <View style={styles.headerContainer}>
           <View style={styles.nameSection}>
             <Text style={styles.name}>
-              {item.personalInfo.firstName} {item.personalInfo.middleName} {item.personalInfo.lastName}
+              {item.personalInfo.firstName} {item.personalInfo.middleName} {item.personalInfo.lastName} {item.personalInfo.suffix}
             </Text>
             <Text style={styles.email}>{item.personalInfo.email}</Text>
           </View>

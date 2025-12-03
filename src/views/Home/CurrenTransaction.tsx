@@ -24,40 +24,53 @@ export default function CurrentTransaction() {
 
   const { getUser } = useAuth();
   const email = getUser()?.email;
+  const id = getUser()?.id;
+
+   const numericId = id ? Number(id) : null;
+
 
   const [fullData, setFullData] = useState<{ users: UserData[] }>({ users: [] });
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<"all" | "pending" | "processing" | "completed">("all");
+  const [selectedFilter, setSelectedFilter] = useState<"all" | "pending" | "processing" | "completed" | "cancelled" >("all");
 
   // Fetch data function
   const fetchTransactions = useCallback(() => {
-    if (!email) {
+    if (!id) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    const socket = getTransactionRecordSocket(email);
+    const socket = getTransactionRecordSocket(numericId!);
 
     socket.on("currentTransactionRecord", (records) => {
-      if (records?.users && Array.isArray(records.users)) {
-        const sorted = records.users.sort(
+      console.log('📥 Full records:', records);  // Debug log
+      
+      // ✅ Access data.users instead of records.users
+      const users = records?.data?.users || records?.users || [];
+      
+      if (Array.isArray(users) && users.length > 0) {
+        const sorted = users.sort(
           (a: UserData, b: UserData) =>
             new Date(b.personalInfo.createdAt).getTime() -
             new Date(a.personalInfo.createdAt).getTime()
         );
         setFullData({ users: sorted });
+        console.log('✅ Sorted data:', sorted);  // Debug log
+      } else {
+        console.log('⚠️ No users found in records');
       }
+      
       setLoading(false);
     });
 
-    socket.emit("currentTransactionRecord", { email });
+    socket.emit("currentTransactionRecord", { id: numericId });
 
     return () => {
       socket.off("currentTransactionRecord");
     };
-  }, [email]);
+  }, [numericId, id]);
 
   // Fetch on screen focus
   useFocusEffect(
@@ -104,7 +117,7 @@ export default function CurrentTransaction() {
 
       {/* ✅ Filter Selection */}
       <View style={styles.filterContainer}>
-        {["all", "pending", "processing", "completed"].map((filter) => (
+        {["all", "pending", "processing", "completed", "cancelled"].map((filter) => (
           <TouchableOpacity
             key={filter}
             onPress={() => setSelectedFilter(filter as any)}
@@ -153,7 +166,7 @@ const styles = StyleSheet.create({
   filterContainer: {
     flexDirection: "row",
     marginBottom: 15,
-    gap: 8,
+    gap: 5,
   },
   filterButton: {
     paddingHorizontal: 12,

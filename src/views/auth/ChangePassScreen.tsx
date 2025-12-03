@@ -1,4 +1,3 @@
-import PasswordPolicy from '@/src/components/checker/PasswordPolicy';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Text, View } from 'react-native';
@@ -37,7 +36,7 @@ export default function ChangePassScreen() {
             <LogoTitle title='Change Password'/>
 
             <View style={styles.FormContainer}>
-                <View style={styles.InputContainer}>
+                <View style={[styles.InputContainer, {marginTop: 25}]}>
                     <Input
                       label="Password"
                       placeholder="Enter your password"
@@ -48,8 +47,8 @@ export default function ChangePassScreen() {
                       editable={!isLoading}
                     />
                     <Input
-                        label="Confirm Password"
-                        placeholder="Confirm your password"
+                        label="Re-Password"
+                        placeholder="Re-enter your password"
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
                         secureTextEntry
@@ -62,7 +61,7 @@ export default function ChangePassScreen() {
                   <Text style={styles.ValidationText}>{validationMessage}</Text>
                 ) : null}
 
-                <PasswordPolicy password={password} confirmPassword={confirmPassword} />
+                {/* <PasswordPolicy password={password} confirmPassword={confirmPassword} /> */}
 
                 <Button
                     title="Change Password"

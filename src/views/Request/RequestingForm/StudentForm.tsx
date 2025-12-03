@@ -104,8 +104,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ setSteps, open, step }) => {
             required
           />
           <Input
-            label="Middle Name"
-            placeholder="Enter Middle Name"
+            label="Middle Initial"
+            placeholder="Enter Middle Initial"
+            maxLength={1}
             value={formData.MiddleInitial}
             onChangeText={(value) => handleChange('MiddleInitial', value)}
           />
@@ -117,11 +118,16 @@ const StudentForm: React.FC<StudentFormProps> = ({ setSteps, open, step }) => {
             required
           />
           <Input
+            label="Suffix"
+            placeholder="Enter Suffix"
+            value={formData.Suffix}
+            onChangeText={(value) => handleChange('Suffix', value)}
+          />
+          <Input
             label="Section"
             placeholder="Enter Student Section"
             value={formData.studentSection}
             onChangeText={(value) => handleChange('studentSection', value)}
-            required
           />
 
           <Dropdown

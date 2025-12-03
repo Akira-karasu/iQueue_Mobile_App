@@ -44,6 +44,32 @@ export function useOtp() {
 
     };
 
+        const handleForgotPasswordOTP = async () => {
+        setIsLoading(true);
+
+        const otpValidation = validateOtp(Number(Otp));
+
+        if (!otpValidation.valid) {
+            setValidationMessage(otpValidation.message || '');
+            setIsLoading(false);
+            return;
+        }
+        try {
+            const user = await authService().otp_verify(email, Otp);
+            console.log('OTP verified successfully');
+            console.log(user);
+            setIsLoading(false);
+            navigation.navigate('Change', { email });
+        } catch (err: any) {
+            setValidationMessage(err.message);
+            setIsLoading(false);
+            return;
+        }finally{
+            setIsLoading(false);
+        }
+
+    };
+
     const goToBack = () => navigation.goBack();
 
     return {
@@ -56,6 +82,7 @@ export function useOtp() {
         isLoading,
         setIsLoading,
         goToBack,
+        handleForgotPasswordOTP,
         email
     };
 }

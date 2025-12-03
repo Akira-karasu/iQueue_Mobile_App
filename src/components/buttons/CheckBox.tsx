@@ -4,7 +4,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 export interface Option {
   id: string | number;
   paymentfees?: string;
-  price?: string;
+  price?: string | number;
   disabled?: boolean;
 }
 
@@ -71,10 +71,14 @@ export default function CheckBox({
             )}
           </View>
 
-          {/* ✅ show PaymentFees and Price */}
+          {/* ✅ show PaymentFees and Price with condition */}
           <View style={styles.labelContainer}>
             <Text style={styles.feeText}>{paymentfees}</Text>
-            <Text style={styles.priceText}>₱{price}</Text>
+            {price && Number(price) > 0 ? (
+              <Text style={styles.priceText}>₱{price}</Text>
+            ) : (
+              <Text style={styles.noPriceText}>no price displayed</Text>
+            )}
           </View>
         </TouchableOpacity>
       ))}
@@ -125,6 +129,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#19AF5B',
     fontWeight: '600',
+  },
+  noPriceText: {  // ✅ New style for no price text
+    fontSize: 14,
+    color: '#999',
+    fontWeight: '500',
   },
   disabled: { opacity: 0.5 },
 });

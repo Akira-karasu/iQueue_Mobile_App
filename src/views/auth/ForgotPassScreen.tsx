@@ -51,7 +51,7 @@ export default function ForgotPassScreen() {
                 ) : null}
 
                 <Button
-                title="Verify"
+                title="Send OTP"
                 onPress={() => handleForgot()}
                 style={{ width: "100%" }}
                 />

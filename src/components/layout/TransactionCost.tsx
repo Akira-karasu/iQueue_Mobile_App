@@ -8,6 +8,7 @@ export type TransactionCostProps = {
 };
 
 function TransactionCost({ openCancel, openSubmit }: TransactionCostProps) {
+
   // 🧠 Get both request lists directly from the store
   const registrarRequestList = useRequestStore(
     (state) => state.RegistrarRequestList.requestList
@@ -19,18 +20,32 @@ function TransactionCost({ openCancel, openSubmit }: TransactionCostProps) {
 
   // 🧮 Compute Registrar total
   const registrarTotal = registrarRequestList.reduce(
-    (sum, item) => sum + item.Price * item.Quantity,
+    (sum, item) => sum + (item.Price * item.Quantity || 0),
     0
   );
 
-  // 💵 Compute Accounting total
+  // 💵 Compute Accounting total (include all items)
   const accountingTotal = accountingRequestList.reduce(
-    (sum, item) => sum + item.Price,
+    (sum, item) => sum + (item.Price || 0),
     0
   );
 
   // 🧾 Compute grand total
   const grandTotal = registrarTotal + accountingTotal;
+
+  // ✅ Check if valid payments are selected
+  const hasValidPayments = accountingRequestList.length > 0;
+  
+  // ✅ Check if registrar items are selected
+  const hasRegistrarItems = registrarRequestList.length > 0 && registrarTotal > 0;
+
+  console.log('📋 Registrar List:', registrarRequestList);
+  console.log('📋 Accounting List:', accountingRequestList);
+  console.log('✅ Has Valid Payments:', hasValidPayments);
+  console.log('✅ Has Registrar Items:', hasRegistrarItems);
+  console.log('💰 Registrar Total:', registrarTotal);
+  console.log('💰 Accounting Total:', accountingTotal);
+  console.log('💰 Grand Total:', grandTotal);
 
   return (
     <View style={styles.container}>
@@ -66,7 +81,7 @@ function TransactionCost({ openCancel, openSubmit }: TransactionCostProps) {
           fontSize={18}
           width="45%"
           onPress={openSubmit}
-          disabled={grandTotal === 0}
+          disabled={!hasValidPayments && !hasRegistrarItems}  // ✅ Enable if either has items
         />
       </View>
     </View>

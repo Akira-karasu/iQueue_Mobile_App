@@ -23,33 +23,32 @@ export function useChangePass() {
     const goToLogin = () => navigation.navigate('Login');
 
     const handleChange = async () => {
-        setIsLoading(true);
-        const passwordValidation = validatePassword(password);
-        const confirmPasswordValidation = validateConfirmPassword(password, confirmPassword);
+    setIsLoading(true);
+    const passwordValidation = validatePassword(password);
+    const confirmPasswordValidation = validateConfirmPassword(password, confirmPassword);
 
-        if (!passwordValidation.valid) {
-            setValidationMessage(passwordValidation.message || '');
-            return;
-        }
-
-        if (!confirmPasswordValidation.valid) {
-            setValidationMessage(confirmPasswordValidation.message || '');
-            return;
-        }
-
-        try {
-            await authService().changePass(email, password);
-            console.log('Password changed successfully');
-        } catch (err: any) {
-            setValidationMessage(err.message);
-            return;
-        }finally{
-            setIsLoading(false);
-        }
-
-        goToLogin();
+    if (!passwordValidation.valid) {
+        setValidationMessage(passwordValidation.message || '');
+        setIsLoading(false);  // ✅ Set to false before returning
+        return;
     }
 
+    if (!confirmPasswordValidation.valid) {
+        setValidationMessage(confirmPasswordValidation.message || '');
+        setIsLoading(false);  // ✅ Set to false before returning
+        return;
+    }
+
+    try {
+        await authService().changePass(email, password, confirmPassword);
+        console.log('Password changed successfully');
+        setIsLoading(false);  // ✅ Success case
+        goToLogin();
+    } catch (err: any) {
+        setValidationMessage(err.message);
+        setIsLoading(false);  // ✅ Error case
+    }
+    }
 
 
 

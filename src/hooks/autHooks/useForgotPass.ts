@@ -18,7 +18,7 @@ export function useForgotPass() {
     const [password, setPassword] = useState('');
     const [validationMessage, setValidationMessage] = useState(' ');
     const [isLoading, setIsLoading] = useState(false);
-    const goToOtp = () => navigation.navigate('Otp', { email });
+    const goToOtp = () => navigation.navigate('ForgotPasswordOTP', { email });
     const goToLogin = () => navigation.navigate('Login');
 
     const handleForgot = async () => {

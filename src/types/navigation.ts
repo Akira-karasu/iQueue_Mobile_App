@@ -17,6 +17,9 @@ export type AuthStackParamList = {
     Otp: {
         email: string;
     };
+    ForgotPasswordOTP: {
+        email: string;
+    };
 }
 
 export type AppStackParamList = {

@@ -38,6 +38,7 @@ export interface FormData {
   FirstName: string;
   MiddleInitial: string;
   LastName: string;
+  Suffix: string;  // ✅ Add this
   isAlumni: boolean | null;
   studentYearLevel: string;
   studentGradeLevel: string;
@@ -46,6 +47,7 @@ export interface FormData {
   isVisitor: boolean;
   visitorName: string;
 }
+
 
 interface RequestStore {
   RegistrarRequestList: RegistrarRequestList;
@@ -142,20 +144,21 @@ export const useRequestStore = create<RequestStore>((set, get) => ({
   availableDocuments: documents,
   availablePayments: payment,
 
-  formData: {
-    email: "",
-    Lrn: "",
-    FirstName: "",
-    MiddleInitial: "",
-    LastName: "",
-    isAlumni: null,
-    studentYearLevel: "",
-    studentGradeLevel: "",
-    studentSection: "",
-    pictureID: "",
-    isVisitor: false,
-    visitorName: "",
-  },
+formData: {
+  email: "",
+  Lrn: "",
+  FirstName: "",
+  MiddleInitial: "",
+  LastName: "",
+  Suffix: "",  // ✅ Add this
+  isAlumni: null,
+  studentYearLevel: "",
+  studentGradeLevel: "",
+  studentSection: "",
+  pictureID: "",
+  isVisitor: false,
+  visitorName: "",
+},
 
   // ✅ Update global form data
   setFormData: (updater) =>
@@ -166,23 +169,24 @@ export const useRequestStore = create<RequestStore>((set, get) => ({
     })),
 
   // ✅ Reset form data (keep email, reset visitor fields)
-  resetFormData: () =>
-    set((state) => ({
-      formData: {
-        email: state.formData.email,
-        Lrn: "",
-        FirstName: "",
-        MiddleInitial: "",
-        LastName: "",
-        isAlumni: null,
-        studentYearLevel: "",
-        studentGradeLevel: "",
-        studentSection: "",
-        pictureID: "",
-        isVisitor: false,
-        visitorName: "",
-      },
-    })),
+resetFormData: () =>
+  set((state) => ({
+    formData: {
+      email: state.formData.email,
+      Lrn: "",
+      FirstName: "",
+      MiddleInitial: "",
+      LastName: "",
+      Suffix: "",  // ✅ Add this
+      isAlumni: null,
+      studentYearLevel: "",
+      studentGradeLevel: "",
+      studentSection: "",
+      pictureID: "",
+      isVisitor: false,
+      visitorName: "",
+    },
+  })),
 
   // 📄 Document controls
   setAvailableDocuments: (docs) => set({ availableDocuments: docs }),

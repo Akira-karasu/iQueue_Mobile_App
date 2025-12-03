@@ -12,6 +12,7 @@ export function useRegister() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +48,7 @@ export function useRegister() {
       const validation = validateRegisterInputs(
         email,
         password,
+        username,
         confirmPassword,
         hasAcceptedTerms
       );
@@ -59,7 +61,7 @@ export function useRegister() {
 
       // Send to backend
       try {
-        await authService().register(email, password, hasAcceptedTerms);
+        await authService().register(email, password, username, hasAcceptedTerms);
         console.log('New account registered, OTP sent');
       } catch (err: any) {
         const errorMessage = parseBackendError(err);
@@ -102,6 +104,8 @@ export function useRegister() {
     setEmail,
     password,
     setPassword,
+    username,
+    setUsername,
     confirmPassword,
     setConfirmPassword,
     validationMessage,

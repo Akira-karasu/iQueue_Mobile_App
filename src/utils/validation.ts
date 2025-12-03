@@ -4,9 +4,37 @@ export type ValidationResult = {
 };
 
 // ========== LOGIN & BASIC AUTH ==========
-export function validateAuth(email: string, password: string): ValidationResult {
-  if (!email) return { valid: false, message: 'Email is required.' };
-  if (!password) return { valid: false, message: 'Password is required.' };
+export function validateAuth(emailOrUsername: string, password: string): ValidationResult {
+  // ✅ Check if email or username is provided
+  if (!emailOrUsername) {
+    return { valid: false, message: 'Email or username is required.' };
+  }
+
+  // ✅ Check if password is provided
+  if (!password) {
+    return { valid: false, message: 'Password is required.' };
+  }
+
+  // ✅ Validate if it's either a valid email OR a valid username
+  const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
+  const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;  // Username: 3-20 chars, alphanumeric, underscore, hyphen
+
+  const isValidEmail = emailRegex.test(emailOrUsername);
+  const isValidUsername = usernameRegex.test(emailOrUsername);
+
+  if (!isValidEmail && !isValidUsername) {
+    return { 
+      valid: false, 
+      message: 'Please enter a valid email or username (3-20 characters, alphanumeric, underscore, or hyphen).' 
+    };
+  }
+
+  return { valid: true };
+}
+
+// ========== USERNAME VALIDATION ==========
+export function validateUsername(username: string): ValidationResult {
+  if (!username) return { valid: false, message: 'Username is required.' };
   return { valid: true };
 }
 
@@ -90,12 +118,16 @@ export function validateTermsAccepted(hasAcceptedTerms: boolean): ValidationResu
 export function validateRegisterInputs(
   email: string,
   password: string,
+  username: string,
   confirmPassword: string,
   hasAcceptedTerms: boolean
 ): ValidationResult {
   // Validate email
   const emailValidation = validateEmail(email);
   if (!emailValidation.valid) return emailValidation;
+
+  const usernameValidation = validateUsername(username);
+  if (!usernameValidation.valid) return usernameValidation;
 
   // Validate password
   const passwordValidation = validatePassword(password);

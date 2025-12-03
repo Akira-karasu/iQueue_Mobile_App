@@ -1,5 +1,5 @@
-import api from '../api/api-connection';
 import * as FileSystem from 'expo-file-system/legacy';
+import api from '../api/api-connection';
 
 // ✅ File size constants - Updated to 5MB
 const FILE_SIZE_LIMITS = {
@@ -199,23 +199,20 @@ export async function submitRequestTransaction(
   }
 }
 
-export async function getCurrentRequestTransactions(email: string, bustCache?: boolean) {
-    try {
-        console.log('📡 Fetching transactions for:', email);
-        
-        const response = await api.get('office-service/FindAllUsersWithTransactions', {
-            params: { 
-                email
-            }
-        });
-        
-        console.log('📦 API Response received');
-        return response.data;
-        
-    } catch (error: any) {
-        console.error('❌ Transaction fetch error:', error);
-        throw new Error(error.response?.data?.message || 'Failed to fetch transactions');
-    }
+export async function getCurrentRequestTransactions(userId: number) {
+  try {
+    console.log(`🔍 Fetching transactions for user ID: ${userId}`);
+
+    const response = await api.get('/office-service/FindAllUsersWithTransactions', {
+      params: { userId }, // ✅ Use userId instead of email
+    });
+
+    console.log('✅ Transactions retrieved:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error fetching transactions:', error.message);
+    throw error;
+  }
 }
 
 export async function cancelTransactionRequest(personalInfoId: number) {

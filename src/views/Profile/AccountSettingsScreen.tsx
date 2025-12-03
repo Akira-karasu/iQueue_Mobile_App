@@ -15,17 +15,27 @@ export default function AccountSettingsScreen() {
     accountInfo,
     passwords,
     editedEmail,
+    username,
+    setUsername,
+    handleChangeUsername,
     setEditedEmail,
+    successMessage,
+    error,
     handleChangeEmail,
+    handleChangePassword,  // ✅ Add this
+    changePassError,
+    changePassSuccessMessage,
     setPasswords,
     onGoToProfile,
   } = useProfile();
 
-    // ✅ Create a handler that passes the email
-  const handleUpdateEmail = useCallback(() => {
+  // ✅ Combined handler for both email and username
+  const handleUpdate = useCallback(() => {
     console.log("🔘 Button pressed, email:", editedEmail);
     handleChangeEmail(editedEmail);
-  }, [editedEmail, handleChangeEmail]);
+    console.log("🔘 Button pressed, username:", username);
+    handleChangeUsername(username);
+  }, [editedEmail, username, handleChangeEmail, handleChangeUsername]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#19AF5B", position: 'relative' }} edges={['top']}>
@@ -48,27 +58,58 @@ export default function AccountSettingsScreen() {
 
                 <Input label="Account ID" value={accountInfo.accountID} editable={false} />
 
+                <Input label="Username" value={username} editable={true} onChangeText={setUsername} />
+
                 <Input
                   label="Email Address"
                   value={editedEmail}
                   onChangeText={setEditedEmail}
                   keyboardType="email-address"
                   editable
-                  required
                 />
+                {error ? <Text style={{ color: 'red', marginBottom: 10 }}>{error}</Text> : null}
+                {successMessage ? <Text style={{ color: 'green', marginBottom: 10 }}>{successMessage}</Text> : null}
 
-                <Button title="Update contact" fontSize={20} onPress={handleUpdateEmail} />
+                <Button title="Update contact" fontSize={20} onPress={() => handleUpdate()} />
               </Card>
 
               {/* Password Change */}
               <Card style={style.cardInput}>
                 <Text style={style.cardText}>Change Password</Text>
 
-                <Input label="Current Password" value={passwords.current} onChangeText={text => setPasswords(prev => ({ ...prev, current: text }))} secureTextEntry showPasswordToggle />
-                <Input label="New Password" value={passwords.new} onChangeText={text => setPasswords(prev => ({ ...prev, new: text }))} secureTextEntry showPasswordToggle />
-                <Input label="Re-enter Password" value={passwords.confirm} onChangeText={text => setPasswords(prev => ({ ...prev, confirm: text }))} secureTextEntry showPasswordToggle />
+                <Input 
+                  label="Current Password" 
+                  value={passwords.current} 
+                  onChangeText={text => setPasswords(prev => ({ ...prev, current: text }))} 
+                  secureTextEntry 
+                  showPasswordToggle 
+                />
+                <Input 
+                  label="New Password" 
+                  value={passwords.new} 
+                  onChangeText={text => setPasswords(prev => ({ ...prev, new: text }))} 
+                  secureTextEntry 
+                  showPasswordToggle 
+                />
+                <Input 
+                  label="Re-enter Password" 
+                  value={passwords.confirm} 
+                  onChangeText={text => setPasswords(prev => ({ ...prev, confirm: text }))} 
+                  secureTextEntry 
+                  showPasswordToggle 
+                />
 
-                <Button title="Change password" fontSize={20} onPress={() => {}} />
+                {/* ✅ Display error and success messages */}
+                {changePassError ? <Text style={{ color: 'red', marginBottom: 10 }}>{changePassError}</Text> : null}
+                {changePassSuccessMessage ? <Text style={{ color: 'green', marginBottom: 10 }}>{changePassSuccessMessage}</Text> : null}
+
+                {/* ✅ Call handleChangePassword */}
+                <Button 
+                  title="Change password" 
+                  fontSize={20} 
+                  onPress={handleChangePassword}  // ✅ Updated
+                />
+
               </Card>
             </View>
 

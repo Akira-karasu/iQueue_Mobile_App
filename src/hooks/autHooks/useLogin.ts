@@ -19,15 +19,16 @@ export function useLogin() {
 
 const navigation = useNavigation<LoginScreenNavigationProp>();
 
-const [email, setEmail] = useState('');
+const [emailOrUsername, setEmailOrUsername] = useState('');
 const [password, setPassword] = useState('');
+
 const [validationMessage, setValidationMessage] = useState(' ');
 const [isLoading, setIsLoading] = useState(false);
 
 const handleLogin = async () => {
   setIsLoading(true);
 
-  const authValidation = validateAuth(email, password);
+  const authValidation = validateAuth(emailOrUsername, password);
 
   if (!authValidation.valid) {
     setValidationMessage(authValidation.message || '');
@@ -38,7 +39,7 @@ const handleLogin = async () => {
   setValidationMessage(' ');
 
   try {
-    const response = await authService().login(email, password);
+    const response = await authService().login(emailOrUsername, password);
     
     console.log('✅ Login response:', JSON.stringify(response, null, 2));
     
@@ -65,7 +66,7 @@ const handleLogin = async () => {
     
   } catch (error: any) {
     if (error.message === 'User is registered but not verified') {
-      navigation.navigate('Otp', { email });
+      navigation.navigate('Otp', { email: emailOrUsername });
     } else {
       setValidationMessage(error.message);
     }
@@ -74,12 +75,12 @@ const handleLogin = async () => {
   }
 };
 
-const goToForgotPassword = () => navigation.navigate('Forgot', { email } );
+const goToForgotPassword = () => navigation.navigate('Forgot', {email: emailOrUsername  } );
 const goToRegister = () => navigation.navigate('Register');
 
 return {
-email,
-setEmail,
+emailOrUsername,
+setEmailOrUsername,
 password,
 setPassword,
 validationMessage,

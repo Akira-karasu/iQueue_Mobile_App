@@ -1,9 +1,9 @@
 import api from '../api/api-connection';
 
 export function authService() {
-  const register = async (email: string, password: string, termsAccepted: boolean) => {
+  const register = async (email: string, password: string, username: string, termsAccepted: boolean) => {
     try {
-      const response = await api.post('/mobile-users/sign-up', { email, password, termsAccepted });
+      const response = await api.post('/mobile-users/sign-up', { email, password, username, termsAccepted });
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Registration failed');
@@ -27,6 +27,15 @@ export function authService() {
       throw new Error(error.response?.data?.message || 'Failed to send OTP');
     }
   };
+  
+  // const reset_email_otp = async (email: string) => {
+  //   try {
+  //     const response = await api.patch('/mobile-auth/send-otp', { email, otp_purpose: 'email_reset'});
+  //     return response.data;
+  //   } catch (error: any) {
+  //     throw new Error(error.response?.data?.message || 'Failed to send OTP');
+  //   }
+  // };
 
   const otp_verify = async (email: string, otp_code: string) => {
     try {
@@ -46,9 +55,9 @@ export function authService() {
     }
   }
 
-  const changePass = async (email: string, password: string) => {
+  const changePass = async (email: string, password: string, confirmPassword: string) => {
     try {
-      const response = await api.post('/mobile-auth/change-password', { email, password });
+      const response = await api.patch('/mobile-auth/change-password', { email, password, confirmPassword });
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Password change failed');
@@ -127,8 +136,46 @@ const changeEmail = async (id: number, newEmail: string) => {
   }
 };
 
+const changeUsername = async (id: number, newUsername: string) => {
+  console.log("🔄 changeUsername called with:", { id, newUsername });
+  try {
+    // ✅ Validate
+    if (!newUsername || newUsername.trim() === '') {
+      throw new Error('Please enter a new username');
+    }
+    // ✅ Send newUsername, not username
+    const response = await api.patch(`/mobile-users/${id}/change-username`, { 
+      newUsername: newUsername.trim() // ✅ MUST be newUsername
+    });
+    console.log('✅ Username changed successfully:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error:', error.response?.data?.message || error.message);
+    throw new Error(error.response?.data?.message || 'Username change failed');
+  }
+};
 
-
+const changePasswordId = async (id: number, currentPassword: string, newPassword: string, confirmPassword: string) => {
+  console.log("🔄 changePasswordId called with:", { id });
+  try {
+    // ✅ Validate
+    if (!newPassword || newPassword.trim() === '') {
+      throw new Error('Please enter a new password');
+    }
+    // ✅ Send id, not email
+    const response = await api.patch(`/mobile-users/${id}/change-password`, { 
+      currentPassword,
+      newPassword,
+      confirmPassword
+    });
+    
+    console.log('✅ Password changed successfully:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ Error:', error.response?.data?.message || error.message);
+    throw new Error(error.response?.data?.message || 'Password change failed');
+  }
+};
 
   return {
     register,
@@ -136,6 +183,8 @@ const changeEmail = async (id: number, newEmail: string) => {
     forgot_send_otp,
     otp_verify,
     getUserInfo,
+    changeUsername,
+    changePasswordId,
     changePass,
     pushToken,
     storePushToken,

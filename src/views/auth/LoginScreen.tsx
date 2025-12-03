@@ -13,8 +13,8 @@ import styles from './authStyle';
 
 export default function LoginScreen() {
 const {
-email,
-setEmail,
+emailOrUsername,
+setEmailOrUsername,
 password,
 setPassword,
 validationMessage,
@@ -32,10 +32,10 @@ return (
     <View style={styles.FormContainer}>
       <View style={styles.InputContainer}>
         <Input
-          label="Email"
-          placeholder="Enter your email"
-          value={email}
-          onChangeText={setEmail}
+          label="Email or Username"
+          placeholder="Enter your email or username"
+          value={emailOrUsername}
+          onChangeText={setEmailOrUsername}
           keyboardType="email-address"
           editable={!isLoading}
         />

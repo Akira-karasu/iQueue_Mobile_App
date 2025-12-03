@@ -336,11 +336,28 @@ const TransactionItemRow = React.memo(({
   const statusColor = getStatusColor(transaction.status, "status");
   const paymentColor = getStatusColor(transaction.paymentStatus, "payment");
 
+  // ✅ Format estimated date - ONLY for documents
+  const estimatedDate = type === "document" && transaction.estimatedDate 
+    ? new Date(transaction.estimatedDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      })
+    : type === "document" ? "No Schedule" : null;
+
   return (
     <>
       <View style={styles.transactionItemContainer}>
         <View style={{ flex: 1 }}>
           <Text style={styles.transactionItemTitle}>{transaction.transactionDetails || "-"}</Text>
+          
+          {/* ✅ Show Estimated Date ONLY for documents */}
+          {type === "document" && (
+            <View style={styles.estimatedDateContainer}>
+              <MaterialIcons name="calendar-today" size={14} color="#666" />
+              <Text style={styles.estimatedDateText}>{estimatedDate}</Text>
+            </View>
+          )}
           
           <View style={styles.transactionMeta}>
             {type === "document" && (
@@ -398,6 +415,23 @@ const styles = StyleSheet.create({
     fontWeight: "700", 
     flex: 1,
     textAlign: "center",
+  },
+
+  estimatedDateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#F0F9FF",
+    borderRadius: 6,
+    width: "auto",
+  },
+  estimatedDateText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#0369A1",
   },
   
   // ✅ Content

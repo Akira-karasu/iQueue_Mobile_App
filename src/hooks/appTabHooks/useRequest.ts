@@ -100,6 +100,8 @@ const removePayment = (paymentName: string) => {
     [payment]
   );
 
+
+
   const handleAccountingSelectionChange = React.useCallback(
     (selectedIds: string[]) => {
       // ✅ Add new selections
@@ -139,7 +141,12 @@ const removePayment = (paymentName: string) => {
       }));
     },
     [setFormData]
-  );  
+  );
+  
+  const hasSelectedPayments = AccountingRequestList.requestList.length > 0 && 
+    AccountingRequestList.requestList.some((item: any) => 
+      item.Price && Number(item.Price) > 0
+  );
 
 const handleSubmitTransaction = React.useCallback(
   async (close: () => void) => {
@@ -202,6 +209,7 @@ const handleDebug = React.useCallback(() => {
     "\nFirstname:", formData.FirstName,
     "\nMiddleInitial:", formData.MiddleInitial,
     "\nLastname:", formData.LastName,
+    "\nSuffix:", formData.Suffix,  // ✅ Add this
     "\nSection:", formData.studentSection,
     "\nYear Level:", formData.studentYearLevel,
     "\nGrade Level:", formData.studentGradeLevel,
@@ -210,10 +218,6 @@ const handleDebug = React.useCallback(() => {
     "\nIs Visitor:", formData.isVisitor,
     "\nVisitor Name:", formData.visitorName
   );
-
-  console.log("📄 Registrar Request List:", RegistrarRequestList);
-  console.log("💰 Accounting Request List:", AccountingRequestList);
-
 }, [formData]);
 
   const AddToRegistrarRequestlist = React.useCallback(() => {
@@ -304,6 +308,7 @@ const handleDebug = React.useCallback(() => {
     selectedpayment,
     removePayment,
     totalPaymentCost,
+     hasSelectedPayments,
     selectedOption,
     setSelectedOption,
     error, setError

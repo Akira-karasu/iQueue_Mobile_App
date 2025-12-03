@@ -28,6 +28,8 @@ export default function RegisterScreen() {
     isLoading,
     hasAcceptedTerms,
     setHasAcceptedTerms,
+    username,
+    setUsername,
     checked, 
     setChecked
   } = useRegister();
@@ -44,12 +46,21 @@ export default function RegisterScreen() {
 
         <View style={styles.FormContainer}>
           <View style={styles.InputContainer}>
+
             <Input
               label="Email"
               placeholder="Enter your email"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              editable={!isLoading}
+              required
+            />
+            <Input
+              label="Username"
+              placeholder="Enter your username"
+              value={username}
+              onChangeText={setUsername}
               editable={!isLoading}
               required
             />

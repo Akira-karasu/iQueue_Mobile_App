@@ -8,13 +8,25 @@ let transactionRecordSocket: Socket | undefined;
 let requestTransactionProcessSocket: Socket | undefined;
 let notificationSocket: Socket | undefined;
 
-export function getTransactionRecordSocket(email: string): Socket {
+export function getTransactionRecordSocket(userId: number): Socket {
   if (!transactionRecordSocket) {
-    transactionRecordSocket = io(`${BASE_URL}/transactionRecord`, {
-      transports: ["websocket", "polling"],
-      query: { email },
+    transactionRecordSocket = io(
+      `${BASE_URL}/transactionRecord`,
+      {
+        transports: ['websocket', 'polling'],
+        query: { userId }, // ✅ Pass userId in query
+      }
+    );
+
+    transactionRecordSocket.on('currentTransactionRecord', (data) => {
+      console.log('📥 Transaction records received:', data);
+    });
+
+    transactionRecordSocket.on('connect_error', (error) => {
+      console.error('❌ Socket connection error:', error);
     });
   }
+
   return transactionRecordSocket;
 }
 
