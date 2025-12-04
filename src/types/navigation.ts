@@ -24,7 +24,12 @@ export type AuthStackParamList = {
 
 export type AppStackParamList = {
   Tabs: undefined;
-  NotificationStack: undefined;
+  NotificationStack: {
+    screen: 'Notification';
+    params: {
+      notificationData: any;
+    };
+  };
 };
 
 export type AppTabsParamList = {

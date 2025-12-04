@@ -1,6 +1,7 @@
 import { StyleSheet } from "react-native";
 
 const style = StyleSheet.create({
+    
     notificationBorder: {
         width: '100%',
         backgroundColor: '#ffffffff',
@@ -18,8 +19,9 @@ const style = StyleSheet.create({
     },
     container: {
         flexGrow: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#F3F4F6',
         justifyContent: 'center',
+        paddingBottom: 20,
     }
     
     

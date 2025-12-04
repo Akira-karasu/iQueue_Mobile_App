@@ -261,3 +261,67 @@ export async function getQueueStatusByPersonalId(personalId: number) {
         throw new Error(error.response?.data?.message || 'Failed to fetch queue status');
     }
 }
+
+export async function mobileTransactionRequestNotification(personalId: number) {
+    try {
+        console.log('🔔 Getting mobile notification for user ID:', personalId);
+        
+        const response = await api.get(`notification/mobile-user/${personalId}`);
+        
+        // console.log('✅ Mobile notification received:', response.data);
+        
+        // ✅ Return formatted response
+        return {
+            statusCode: response.data.statusCode || 200,
+            message: response.data.message || 'Notifications retrieved',
+            count: response.data.count || 0,
+            data: response.data.data || [],
+        };
+        
+    } catch (error: any) {
+        console.error('❌ Mobile notification fetch error:', {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+        });
+        throw new Error(error.response?.data?.message || 'Failed to fetch mobile notification');
+    }
+}
+
+export async function countTransactionRequestNotification(personalId: number) {
+    try {
+        console.log('🔔 Counting transaction notifications for user ID:', personalId);
+        const response = await api.get(`notification/mobile-user/${personalId}/unseen-count`);
+        console.log('✅ Notification count received:', response.data);
+        return response.data;
+    } catch (error: any) {
+        console.error('❌ Notification count fetch error:', error);
+        throw new Error(error.response?.data?.message || 'Failed to count notifications');
+    }
+}
+
+export async function markNotificationAsDone(notificationId: number) {
+    try {
+        console.log(`📤 Marking notification as done - ID: ${notificationId}`);
+        
+        const response = await api.patch(
+            `notification/${notificationId}/done`
+        );
+        
+        console.log('✅ Notification marked as done:', response.data);
+        
+        return {
+            statusCode: response.data.statusCode || 200,
+            message: response.data.message || 'Notification marked as done',
+        };
+        
+    } catch (error: any) {
+        console.error('❌ Mark as done error:', {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+        });
+        throw new Error(error.response?.data?.message || 'Failed to mark notification as done');
+    }
+}
+
